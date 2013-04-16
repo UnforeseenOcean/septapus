@@ -1,4 +1,4 @@
-septapus
+Septapus
 ========
 
-Septapus
+An IRC bot.
