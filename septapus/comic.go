@@ -46,6 +46,14 @@ type ComicPlugin struct {
 	Renderers []CellRenderer
 }
 
+type Speaker int
+type Text string
+
+type Message struct {
+	Speaker Speaker
+	Text    Text
+}
+
 type Script struct {
 	Messages []*Message
 	Room     RoomName
@@ -536,14 +544,6 @@ func InsetRectangle2(x, y, width, height, horizontal, vertical float64) (float64
 
 func InsetRectangle4(x, y, width, height, left, right, top, bottom float64) (float64, float64, float64, float64) {
 	return x + left, y + top, width - left - right, height - top - bottom
-}
-
-type Speaker int
-type Text string
-
-type Message struct {
-	Speaker Speaker
-	Text    Text
 }
 
 type CellRenderer interface {
