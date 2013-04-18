@@ -4,13 +4,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/iopred/septapus/septapus"
 )
 
 func main() {
 	flag.Parse()
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	bot := septapus.NewBot()
 	bot.AddPlugin(septapus.NewYouTubePlugin())
