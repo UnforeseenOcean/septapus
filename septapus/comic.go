@@ -27,7 +27,9 @@ import (
 	"github.com/fluffle/goirc/client"
 )
 
-var key = flag.String("key", "", "Private key for uploading comics")
+var comickey = flag.String("comickey", "", "Private key for uploading comics")
+var comicurl = flag.String("comicurl", "http://septapus.com/comics/comics.php", "Url to upload the generated comics")
+var comicallowrepeats = flag.Bool("comicallowrepeats", false, "Can one person laugh repeatedly to trigger comic.")
 
 const (
 	arrowHeight float64 = 5
@@ -166,7 +168,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 			if isUrl(text) != "" {
 				reset()
 			} else if isLaugh(text) {
-				if lastLaugh != event.Line.Nick {
+				if lastLaugh != event.Line.Nick || *comicallowrepeats {
 					lastLaugh = event.Line.Nick
 					if laughs == 0 {
 						laughs = 2
@@ -175,8 +177,8 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 					}
 
 					if laughs > 3 {
-						scriptchan <- &Script{script, room}
 						server.Conn.Privmsg(string(room), randomLaugh())
+						scriptchan <- &Script{script, room}
 						reset()
 					}
 				}
@@ -279,7 +281,7 @@ func (comic *ComicPlugin) uploadComic(image image.Image) {
 	w := multipart.NewWriter(b)
 	defer w.Close()
 
-	if err = w.WriteField("key", *key); err != nil {
+	if err = w.WriteField("key", *comickey); err != nil {
 		return
 	}
 
@@ -302,7 +304,7 @@ func (comic *ComicPlugin) uploadComic(image image.Image) {
 
 	w.Close()
 
-	if _, err := http.Post("http://www.septapus.com/comics/comics.php", w.FormDataContentType(), b); err != nil {
+	if _, err := http.Post(*comicurl, w.FormDataContentType(), b); err != nil {
 		return
 	}
 }
