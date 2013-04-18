@@ -31,11 +31,10 @@ type youTubeVideo struct {
 	} `json:entry`
 }
 
-const YouTubeRegex string = `(\s|^)(http://|https://)?(www.)?(youtube.com/watch\?v=|youtu.be/)(.*?)(\s|$|\&|#)`
-
-func NewYouTubePlugin() Plugin {
-	return NewSimplePlugin(YouTubePlugin)
-}
+const (
+	UrlRegex     string = `(\s|^)(http://|https://|www.)(.*?)(\s|$)`
+	YouTubeRegex string = `(\s|^)(http://|https://)?(www.)?(youtube.com/watch\?v=|youtu.be/)(.*?)(\s|$|\&|#)`
+)
 
 func isYouTubeURL(text string) []string {
 	if regex, err := regexp.Compile(YouTubeRegex); err == nil {
@@ -44,6 +43,23 @@ func isYouTubeURL(text string) []string {
 		}
 	}
 	return nil
+}
+
+func isUrl(text string) string {
+	if regex, err := regexp.Compile(UrlRegex); err == nil {
+		url := strings.TrimSpace(regex.FindString(text))
+		if url != "" {
+			if strings.Index(url, "http") != 0 {
+				url = "http://" + url
+			}
+			return url
+		}
+	}
+	return ""
+}
+
+func NewYouTubePlugin() Plugin {
+	return NewSimplePlugin(YouTubePlugin)
 }
 
 func YouTubePlugin(bot *Bot) {
@@ -70,23 +86,8 @@ func YouTubePlugin(bot *Bot) {
 	}
 }
 
-const UrlRegex string = `(\s|^)(http://|https://|www.)(.*?)(\s|$)`
-
 func NewURLPlugin() Plugin {
 	return NewSimplePlugin(URLPlugin)
-}
-
-func isUrl(text string) string {
-	if regex, err := regexp.Compile(UrlRegex); err == nil {
-		url := strings.TrimSpace(regex.FindString(text))
-		if url != "" {
-			if strings.Index(url, "http") != 0 {
-				url = "http://" + url
-			}
-			return url
-		}
-	}
-	return ""
 }
 
 func URLPlugin(bot *Bot) {

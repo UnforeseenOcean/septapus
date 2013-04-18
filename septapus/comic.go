@@ -32,7 +32,16 @@ var key = flag.String("key", "", "Private key for uploading comics")
 type Speaker int
 type Line string
 
-const arrowHeight float64 = 5
+const (
+	arrowHeight float64 = 5
+	laughRegex  string  = `\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)\b`
+)
+
+const (
+	TEXT_ALIGN_LEFT int = iota
+	TEXT_ALIGN_CENTER
+	TEXT_ALIGN_RIGHT
+)
 
 type Message struct {
 	Speaker Speaker
@@ -225,12 +234,6 @@ func (c *OneSpeakerMonologueCellRenderer) Render(gc *draw2d.ImageGraphicContext,
 
 }
 
-const (
-	TEXT_ALIGN_LEFT int = iota
-	TEXT_ALIGN_CENTER
-	TEXT_ALIGN_RIGHT
-)
-
 func countSpeakers(script []*Message, lines int) int {
 	seenMap := make(map[Speaker]bool)
 	for i := 0; i < lines; i++ {
@@ -324,11 +327,9 @@ func (comic *ComicPlugin) Init(bot *Bot) {
 	}
 }
 
-const laughRegex string = `\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)\b`
-
 func isLaugh(text string) bool {
 	if regex, err := regexp.Compile(laughRegex); err == nil {
-		return regex.MatchString(text)
+		return regex.MatchString(strings.ToLower(text))
 	}
 	return false
 }
