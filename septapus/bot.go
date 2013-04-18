@@ -246,7 +246,6 @@ type Plugin interface {
 type SimplePluginInit func(bot *Bot)
 
 type SimplePlugin struct {
-	Bot  *Bot
 	init SimplePluginInit
 }
 
@@ -255,7 +254,6 @@ func NewSimplePlugin(init SimplePluginInit) Plugin {
 }
 
 func (plugin *SimplePlugin) Init(bot *Bot) {
-	plugin.Bot = bot
 	plugin.init(bot)
 }
 
