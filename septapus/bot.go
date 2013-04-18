@@ -250,7 +250,7 @@ type SimplePlugin struct {
 }
 
 func NewSimplePlugin(init SimplePluginInit) Plugin {
-	return &SimplePlugin{nil, init}
+	return &SimplePlugin{init}
 }
 
 func (plugin *SimplePlugin) Init(bot *Bot) {
