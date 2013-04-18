@@ -326,10 +326,12 @@ func createPlans(renderers []CellRenderer, comicLength int, currentPlan []CellRe
 	results := make([][]CellRenderer, 0)
 	for _, renderer := range renderers {
 		lines := renderer.Lines()
-		if lines <= len(remainingScript) && renderer.Speakers() == countSpeakers(remainingScript, lines) {
-			plans := createPlans(renderers, comicLength, append(currentPlan, renderer), remainingScript[lines:], currentLength+1)
-			if len(plans) > 0 {
-				results = append(results, plans...)
+		if lines <= len(remainingScript) {
+			if renderer.Speakers() == countSpeakers(remainingScript[:lines], lines) {
+				plans := createPlans(renderers, comicLength, append(currentPlan, renderer), remainingScript[lines:], currentLength+1)
+				if len(plans) > 0 {
+					results = append(results, plans...)
+				}
 			}
 		}
 	}
