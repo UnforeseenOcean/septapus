@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"flag"
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -25,6 +24,7 @@ import (
 	"code.google.com/p/freetype-go/freetype/raster"
 	"code.google.com/p/freetype-go/freetype/truetype"
 	"github.com/fluffle/goirc/client"
+	"github.com/fluffle/golog/logging"
 )
 
 var comickey = flag.String("comickey", "", "Private key for uploading comics")
@@ -71,7 +71,7 @@ func (comic *ComicPlugin) Init(bot *Bot) {
 	var avatarFiles []os.FileInfo
 	var err error
 	if avatarFiles, err = ioutil.ReadDir("avatars"); err != nil {
-		fmt.Println("Could not open avatars directory.")
+		logging.Error("Could not open avatars directory.")
 		return
 	}
 
@@ -130,8 +130,8 @@ func randomLaugh() string {
 }
 
 func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server *Server, room RoomName) {
-	fmt.Println("Creating comics in", room)
-	defer fmt.Println("Stopped creating comics in", room)
+	logging.Info("Creating comics in", server.Name, room)
+	defer logging.Info("Stopped creating comics in", server.Name, room)
 
 	disconnectchan := bot.GetEventHandler(client.DISCONNECTED)
 	partchan := FilterSelfRoom(bot.GetEventHandler(client.PART), server.Name, room)
@@ -237,7 +237,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 	maxLines *= maxComicLength
 
 	if len(script) > maxLines {
-		fmt.Println("Script is too long, trimming")
+		logging.Info("Script is too long, trimming")
 		script = script[len(script)-maxLines:]
 	}
 
@@ -254,7 +254,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 	}
 
 	if len(plans) == 0 {
-		fmt.Println("No plans available to render script.")
+		logging.Error("No plans available to render script:", script)
 		return
 	}
 	plan := plans[rand.Intn(len(plans))]
@@ -281,17 +281,14 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 }
 
 func (comic *ComicPlugin) uploadComic(image image.Image) {
-	file, err := os.Create("out.png")
+	file, err := os.Create("comic.png")
 	defer file.Close()
 	if err != nil {
-		fmt.Println(err)
+		logging.Error("Error creating file:", err)
 		return
 	}
+
 	filewriter := bufio.NewWriter(file)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
 	b := &bytes.Buffer{}
 
@@ -299,29 +296,31 @@ func (comic *ComicPlugin) uploadComic(image image.Image) {
 	defer w.Close()
 
 	if err = w.WriteField("key", *comickey); err != nil {
+		logging.Error("Error creating key:", err)
 		return
 	}
 
 	formfile, err := w.CreateFormFile("comic", "comic.png")
 	if err != nil {
-		fmt.Println(err)
+		logging.Error("Error creating form file:", err)
 		return
 	}
 
 	if err = png.Encode(io.MultiWriter(filewriter, formfile), image); err != nil {
-		fmt.Println(err)
+		logging.Error("Error encoding PNG:", err)
 		return
 	}
 
 	if err = filewriter.Flush(); err != nil {
-		fmt.Println(err)
+		logging.Error("Error flushing to disk:", err)
 		return
 	}
-	fmt.Println("Wrote out.png OK.")
+	logging.Info("Wrote comic to disk")
 
 	w.Close()
 
 	if _, err := http.Post(*comicurl, w.FormDataContentType(), b); err != nil {
+		logging.Error("Error posting comic to server:", err)
 		return
 	}
 }

@@ -1,11 +1,11 @@
 package septapus
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/fluffle/goirc/client"
+	"github.com/fluffle/golog/logging"
 )
 
 type ServerName string
@@ -97,6 +97,7 @@ type Bot struct {
 }
 
 func NewBot() *Bot {
+	logging.InitFromFlags()
 	bot := &Bot{}
 	bot.AddPlugin(NewSimplePlugin(ConnectPlugin))
 	bot.AddPlugin(NewSimplePlugin(DisconnectPlugin))
@@ -305,7 +306,7 @@ func ConnectPlugin(bot *Bot) {
 		if !ok {
 			break
 		}
-		fmt.Println(event.Server.Name, "Connected")
+		logging.Info("Connected to", event.Server.Name)
 		joinAll(event.Server)
 	}
 }
@@ -317,7 +318,7 @@ func DisconnectPlugin(bot *Bot) {
 		if !ok {
 			break
 		}
-		fmt.Println(event.Server.Name, "Disconnected")
+		logging.Info("Disconnected from", event.Server.Name)
 		event.Server.Conn.Connect()
 	}
 }
