@@ -213,6 +213,24 @@ func (bot *Bot) GetRoomEventHandler(server ServerName, room RoomName, event Even
 	return events.AddHandler()
 }
 
+// Filters a channel to only return the events that targets our nick.
+func FilterChannel(channel chan *Event) chan *Event {
+	filteredchannel := make(chan *Event)
+	go func() {
+		defer close(filteredchannel)
+		for {
+			event, ok := <-channel
+			if !ok {
+				return
+			}
+			if event.Line.Nick == event.Server.Conn.Me().Nick {
+				filteredchannel <- event
+			}
+		}
+	}()
+	return filteredchannel
+}
+
 func (bot *Bot) Disconnect() {
 	bot.Lock()
 	defer bot.Unlock()

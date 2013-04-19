@@ -62,9 +62,11 @@ type Script struct {
 }
 
 func (comic *ComicPlugin) Init(bot *Bot) {
-	joinchan := bot.GetAllEventHandler(client.JOIN)
+	joinchan := FilterChannel(bot.GetAllEventHandler(client.JOIN))
 	scriptchan := make(chan *Script)
+	defer close(scriptchan)
 	comicchan := make(chan image.Image)
+	defer close(comicchan)
 
 	var avatarFiles []os.FileInfo
 	var err error
@@ -103,9 +105,7 @@ func (comic *ComicPlugin) Init(bot *Bot) {
 			if !ok {
 				return
 			}
-			if event.Line.Nick == event.Server.Conn.Me().Nick {
-				go comic.makeScripts(scriptchan, bot, event.Server, RoomName(event.Line.Target()))
-			}
+			go comic.makeScripts(scriptchan, bot, event.Server, RoomName(event.Line.Target()))
 		}
 	}
 }
@@ -130,8 +130,10 @@ func randomLaugh() string {
 }
 
 func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server *Server, room RoomName) {
+	fmt.Println("Creating comics in", room)
+
 	message := bot.GetRoomEventHandler(server.Name, room, client.PRIVMSG)
-	part := bot.GetRoomEventHandler(server.Name, room, client.PART)
+	part := FilterChannel(bot.GetRoomEventHandler(server.Name, room, client.PART))
 
 	var (
 		script    []*Message
@@ -153,18 +155,16 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 
 	for {
 		select {
-		case event, ok := <-part:
-			// If the channel dies, or we leave the room, we should stop making comics in the room. We'll get restarted if we join again.
-			if !ok || event.Line.Nick == server.Conn.Me().Nick {
-				return
-			}
+		case <-part:
+			// If we read a value we should die, if we read nil the channel has closed and we should die.
+			fmt.Println("Stopped creating comics in", room)
+			return
 		case event, ok := <-message:
 			if !ok {
 				return
 			}
 
 			text := event.Line.Text()
-
 			if isUrl(text) != "" {
 				reset()
 			} else if isLaugh(text) {
@@ -183,7 +183,6 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 					}
 				}
 			} else {
-
 				if laughs > 0 {
 					laughs--
 					if laughs == 0 {
