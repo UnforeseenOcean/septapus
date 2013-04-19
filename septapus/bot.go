@@ -151,12 +151,18 @@ func (bot *Bot) GetEventHandler(event EventName) chan *Event {
 }
 
 func (bot *Bot) RemoveEventHandler(event chan *Event) {
+	bot.RLock()
+	defer bot.RUnlock()
+
 	for _, events := range bot.events {
 		events.RemoveEventHandler(event)
 	}
 }
 
 func (bot *Bot) BroadcastEvent(name EventName, event *Event) {
+	bot.RLock()
+	defer bot.RUnlock()
+
 	if bot.events == nil {
 		return
 	}
@@ -255,6 +261,14 @@ func (bot *Bot) Disconnect() {
 	<-time.After(500 * time.Millisecond)
 }
 
+func (b *Bot) AddPlugin(plugin Plugin) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.plugins = append(b.plugins, plugin)
+	go plugin.Init(b)
+}
+
 type Plugin interface {
 	Init(bot *Bot)
 }
@@ -271,14 +285,6 @@ func NewSimplePlugin(init SimplePluginInit) Plugin {
 
 func (plugin *SimplePlugin) Init(bot *Bot) {
 	plugin.init(bot)
-}
-
-func (b *Bot) AddPlugin(plugin Plugin) {
-	b.Lock()
-	defer b.Unlock()
-
-	b.plugins = append(b.plugins, plugin)
-	go plugin.Init(b)
 }
 
 func ConnectPlugin(bot *Bot) {
