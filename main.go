@@ -43,6 +43,4 @@ func main() {
 	}()
 
 	<-quit
-
-	fmt.Println("Shutting down.")
 }

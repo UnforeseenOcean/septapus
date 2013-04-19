@@ -43,7 +43,6 @@ const (
 )
 
 type ComicPlugin struct {
-	Bot       *Bot
 	Avatars   []image.Image
 	Renderers []CellRenderer
 }
