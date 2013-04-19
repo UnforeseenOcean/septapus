@@ -8,16 +8,9 @@ import (
 	"github.com/fluffle/goirc/client"
 )
 
-var eventList = [...]string{client.REGISTER, client.CONNECTED, client.DISCONNECTED, client.ACTION, client.AWAY, client.CTCP, client.CTCPREPLY, client.INVITE, client.JOIN, client.KICK, client.MODE, client.NICK, client.NOTICE, client.OPER, client.PART, client.PASS, client.PING, client.PONG, client.PRIVMSG, client.QUIT, client.TOPIC, client.USER, client.VERSION, client.VHOST, client.WHO, client.WHOIS}
-
 type ServerName string
 type RoomName string
 type EventName string
-
-var (
-	AllServers ServerName = "*"
-	AllRooms   RoomName   = "*"
-)
 
 type Server struct {
 	Name   ServerName
@@ -52,23 +45,35 @@ type Event struct {
 type EventDispatcher struct {
 	sync.RWMutex
 
-	channels []chan *Event
+	channels map[chan *Event]bool
 }
 
-func (e *EventDispatcher) AddHandler() chan *Event {
+func NewEventDispatcher() *EventDispatcher {
+	return &EventDispatcher{channels: make(map[chan *Event]bool)}
+}
+
+func (e *EventDispatcher) GetEventHandler() chan *Event {
 	e.Lock()
 	defer e.Unlock()
 
-	channel := make(chan *Event)
-	e.channels = append(e.channels, channel)
+	channel := make(chan *Event, 10)
+	e.channels[channel] = true
 	return channel
+}
+
+func (e *EventDispatcher) RemoveEventHandler(channel chan *Event) {
+	e.Lock()
+	defer e.Unlock()
+
+	close(channel)
+	delete(e.channels, channel)
 }
 
 func (e *EventDispatcher) Broadcast(event *Event) {
 	e.RLock()
 	defer e.RUnlock()
 
-	for _, channel := range e.channels {
+	for channel, _ := range e.channels {
 		channel <- event
 	}
 }
@@ -77,7 +82,7 @@ func (e *EventDispatcher) Close() {
 	e.Lock()
 	defer e.Unlock()
 
-	for _, channel := range e.channels {
+	for channel, _ := range e.channels {
 		close(channel)
 	}
 }
@@ -85,12 +90,10 @@ func (e *EventDispatcher) Close() {
 type Bot struct {
 	sync.RWMutex
 
-	servers                map[ServerName]*Server
-	handlers               map[EventName]bool
-	removers               []client.Remover
-	serverEventDispatchers map[ServerName]map[EventName]*EventDispatcher
-	roomEventDispatchers   map[ServerName]map[RoomName]map[EventName]*EventDispatcher
-	plugins                []Plugin
+	servers  map[ServerName]*Server
+	removers []client.Remover
+	events   map[EventName]*EventDispatcher
+	plugins  []Plugin
 }
 
 func NewBot() *Bot {
@@ -111,111 +114,61 @@ func (bot *Bot) AddServer(server *Server) (*Server, error) {
 		return bot.servers[server.Name], nil
 	}
 	bot.servers[server.Name] = server
+	for event, _ := range bot.events {
+		bot.makeEvents(server, event)
+	}
 
 	conn := client.Client(server.Config)
 	server.Conn = conn
 
-	for _, event := range eventList {
-		eventName := EventName(event)
-		bot.removers = append(bot.removers, conn.HandleFunc(event, func(conn *client.Conn, line *client.Line) {
-			room := RoomName(line.Target())
-			bot.RLock()
-			defer bot.RUnlock()
-
-			if servers := bot.serverEventDispatchers[AllServers]; servers != nil {
-				if events := servers[eventName]; events != nil {
-					events.Broadcast(&Event{server, room, line})
-				}
-			}
-			if servers := bot.serverEventDispatchers[server.Name]; servers != nil {
-				if events := servers[eventName]; events != nil {
-					events.Broadcast(&Event{server, room, line})
-				}
-			}
-			if servers := bot.roomEventDispatchers[server.Name]; servers != nil {
-				if rooms := servers[room]; rooms != nil {
-					if events := rooms[eventName]; events != nil {
-						events.Broadcast(&Event{server, room, line})
-					}
-				}
-			}
-			if servers := bot.roomEventDispatchers[AllServers]; servers != nil {
-				if rooms := servers[room]; rooms != nil {
-					if events := rooms[eventName]; events != nil {
-						events.Broadcast(&Event{server, room, line})
-					}
-				}
-			}
-			if servers := bot.roomEventDispatchers[AllServers]; servers != nil {
-				if rooms := servers[AllRooms]; rooms != nil {
-					if events := rooms[eventName]; events != nil {
-						events.Broadcast(&Event{server, room, line})
-					}
-				}
-			}
-
-		}))
-	}
-
 	return server, conn.Connect()
 }
 
-func (bot *Bot) GetAllEventHandler(event EventName) chan *Event {
-	return bot.GetServerEventHandler(AllServers, event)
+func (bot *Bot) makeEvents(server *Server, event EventName) {
+	events := bot.events[event]
+	bot.removers = append(bot.removers, server.Conn.HandleFunc(string(event), func(conn *client.Conn, line *client.Line) {
+		events.Broadcast(&Event{server, RoomName(line.Target()), line})
+	}))
 }
 
-func (bot *Bot) GetServerEventHandler(server ServerName, event EventName) chan *Event {
+func (bot *Bot) GetEventHandler(event EventName) chan *Event {
 	bot.Lock()
 	defer bot.Unlock()
 
-	if bot.serverEventDispatchers == nil {
-		bot.serverEventDispatchers = make(map[ServerName]map[EventName]*EventDispatcher)
+	if bot.events == nil {
+		bot.events = make(map[EventName]*EventDispatcher)
 	}
-	servers := bot.serverEventDispatchers[server]
-	if servers == nil {
-		servers = make(map[EventName]*EventDispatcher)
-		bot.serverEventDispatchers[server] = servers
-	}
-	events := servers[event]
+
+	events := bot.events[event]
 	if events == nil {
-		events = &EventDispatcher{}
-		servers[event] = events
+		events = NewEventDispatcher()
+		bot.events[event] = events
+		for _, server := range bot.servers {
+			bot.makeEvents(server, event)
+		}
 	}
-	return events.AddHandler()
+	return events.GetEventHandler()
 }
 
-func (bot *Bot) GetAllRoomsEventHandler(server ServerName, event EventName) chan *Event {
-	return bot.GetRoomEventHandler(server, AllRooms, event)
+func (bot *Bot) RemoveEventHandler(event chan *Event) {
+	for _, events := range bot.events {
+		events.RemoveEventHandler(event)
+	}
 }
 
-func (bot *Bot) GetRoomEventHandler(server ServerName, room RoomName, event EventName) chan *Event {
-	bot.Lock()
-	defer bot.Unlock()
-
-	if bot.roomEventDispatchers == nil {
-		bot.roomEventDispatchers = make(map[ServerName]map[RoomName]map[EventName]*EventDispatcher)
+func (bot *Bot) BroadcastEvent(name EventName, event *Event) {
+	if bot.events == nil {
+		return
 	}
-	servers := bot.roomEventDispatchers[server]
-	if servers == nil {
-		servers = make(map[RoomName]map[EventName]*EventDispatcher)
-		bot.roomEventDispatchers[server] = servers
+	events := bot.events[name]
+	if events != nil {
+		events.Broadcast(event)
 	}
-	rooms := servers[room]
-	if rooms == nil {
-		rooms = make(map[EventName]*EventDispatcher)
-		servers[room] = rooms
-	}
-	events := rooms[event]
-	if events == nil {
-		events = &EventDispatcher{}
-		rooms[event] = events
-	}
-	return events.AddHandler()
 }
 
 // Filters a channel to only return the events that targets our nick.
-func FilterChannel(channel chan *Event) chan *Event {
-	filteredchannel := make(chan *Event)
+func FilterSelf(channel chan *Event) chan *Event {
+	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
 		for {
@@ -231,30 +184,75 @@ func FilterChannel(channel chan *Event) chan *Event {
 	return filteredchannel
 }
 
+// Filters a channel to only return the events that are fired from a server.
+func FilterServer(channel chan *Event, server ServerName) chan *Event {
+	filteredchannel := make(chan *Event, cap(channel))
+	go func() {
+		defer close(filteredchannel)
+		for {
+			event, ok := <-channel
+			if !ok {
+				return
+			}
+			if event.Server.Name == server {
+				filteredchannel <- event
+			}
+		}
+	}()
+	return filteredchannel
+}
+
+// Filters a channel to only return the events that are fired from a room.
+func FilterRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
+	filteredchannel := make(chan *Event, cap(channel))
+	go func() {
+		defer close(filteredchannel)
+		for {
+			event, ok := <-channel
+			if !ok {
+				return
+			}
+			if event.Server.Name == server && event.Room == room {
+				filteredchannel <- event
+			}
+		}
+	}()
+	return filteredchannel
+}
+
+// Filters a channel to only return the events that target our nick in a room.
+func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
+	filteredchannel := make(chan *Event, cap(channel))
+	go func() {
+		defer close(filteredchannel)
+		for {
+			event, ok := <-channel
+			if !ok {
+				return
+			}
+			if event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room {
+				filteredchannel <- event
+			}
+		}
+	}()
+	return filteredchannel
+}
+
 func (bot *Bot) Disconnect() {
 	bot.Lock()
 	defer bot.Unlock()
 
-	for _, servers := range bot.serverEventDispatchers {
-		for _, events := range servers {
-			events.Close()
-		}
-	}
-	for _, servers := range bot.roomEventDispatchers {
-		for _, rooms := range servers {
-			for _, events := range rooms {
-				events.Close()
-			}
-		}
-	}
 	for _, remover := range bot.removers {
 		remover.Remove()
+	}
+	for _, events := range bot.events {
+		events.Close()
 	}
 	for _, server := range bot.servers {
 		server.Conn.Quit()
 	}
 
-	<-time.After(1 * time.Second)
+	<-time.After(500 * time.Millisecond)
 }
 
 type Plugin interface {
@@ -284,21 +282,30 @@ func (b *Bot) AddPlugin(plugin Plugin) {
 }
 
 func ConnectPlugin(bot *Bot) {
-	channel := bot.GetAllEventHandler(client.CONNECTED)
+	joinAll := func(server *Server) {
+		for _, channel := range server.Rooms {
+			server.Conn.Join(string(channel))
+		}
+	}
+	// If we're added after the servers are connected, we need to join.
+	for _, server := range bot.servers {
+		if server.Conn.Connected() {
+			joinAll(server)
+		}
+	}
+	channel := bot.GetEventHandler(client.CONNECTED)
 	for {
 		event, ok := <-channel
 		if !ok {
 			break
 		}
 		fmt.Println(event.Server.Name, "Connected")
-		for _, channel := range event.Server.Rooms {
-			event.Server.Conn.Join(string(channel))
-		}
+		joinAll(event.Server)
 	}
 }
 
 func DisconnectPlugin(bot *Bot) {
-	channel := bot.GetAllEventHandler(client.DISCONNECTED)
+	channel := bot.GetEventHandler(client.DISCONNECTED)
 	for {
 		event, ok := <-channel
 		if !ok {

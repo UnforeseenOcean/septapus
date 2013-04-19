@@ -63,7 +63,7 @@ func NewYouTubePlugin() Plugin {
 }
 
 func YouTubePlugin(bot *Bot) {
-	channel := bot.GetAllEventHandler(client.PRIVMSG)
+	channel := bot.GetEventHandler(client.PRIVMSG)
 	for {
 		event, ok := <-channel
 		if !ok {
@@ -91,7 +91,7 @@ func NewURLPlugin() Plugin {
 }
 
 func URLPlugin(bot *Bot) {
-	channel := bot.GetAllEventHandler(client.PRIVMSG)
+	channel := bot.GetEventHandler(client.PRIVMSG)
 	for {
 		event, ok := <-channel
 		if !ok {

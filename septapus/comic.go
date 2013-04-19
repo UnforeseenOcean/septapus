@@ -62,10 +62,10 @@ type Script struct {
 }
 
 func (comic *ComicPlugin) Init(bot *Bot) {
-	joinchan := FilterChannel(bot.GetAllEventHandler(client.JOIN))
-	scriptchan := make(chan *Script)
+	joinchan := FilterSelf(bot.GetEventHandler(client.JOIN))
+	scriptchan := make(chan *Script, 100)
 	defer close(scriptchan)
-	comicchan := make(chan image.Image)
+	comicchan := make(chan image.Image, 100)
 	defer close(comicchan)
 
 	var avatarFiles []os.FileInfo
@@ -131,9 +131,11 @@ func randomLaugh() string {
 
 func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server *Server, room RoomName) {
 	fmt.Println("Creating comics in", room)
+	defer fmt.Println("Stopped creating comics in", room)
 
-	message := bot.GetRoomEventHandler(server.Name, room, client.PRIVMSG)
-	part := FilterChannel(bot.GetRoomEventHandler(server.Name, room, client.PART))
+	disconnectchan := bot.GetEventHandler(client.DISCONNECTED)
+	partchan := FilterSelfRoom(bot.GetEventHandler(client.PART), server.Name, room)
+	messagechan := FilterRoom(bot.GetEventHandler(client.PRIVMSG), server.Name, room)
 
 	var (
 		script    []*Message
@@ -152,18 +154,28 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 		lastLaugh = ""
 	}
 	reset()
-
+	quit := func() {
+		bot.RemoveEventHandler(disconnectchan)
+		bot.RemoveEventHandler(partchan)
+		bot.RemoveEventHandler(messagechan)
+	}
 	for {
 		select {
-		case <-part:
-			// If we read a value we should die, if we read nil the channel has closed and we should die.
-			fmt.Println("Stopped creating comics in", room)
-			return
-		case event, ok := <-message:
+		// On a disconnect or a part, we need to close our handlers, otherwise a second join would trigger another copy of this function.
+		case _, ok := <-disconnectchan:
 			if !ok {
 				return
 			}
-
+			quit()
+		case _, ok := <-partchan:
+			if !ok {
+				return
+			}
+			quit()
+		case event, ok := <-messagechan:
+			if !ok {
+				return
+			}
 			text := event.Line.Text()
 			if isUrl(text) != "" {
 				reset()
@@ -231,7 +243,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 
 	// Create all plans that are sufficient, and pick a random one.
 	plans := make([][]CellRenderer, 0)
-	planchan := make(chan []CellRenderer, 10)
+	planchan := make(chan []CellRenderer, len(comic.Renderers)*len(comic.Renderers))
 	go createPlans(planchan, comic.Renderers, maxComicLength, make([]CellRenderer, 0), script, 0)
 	for {
 		plan, ok := <-planchan
