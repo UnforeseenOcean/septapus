@@ -212,22 +212,8 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 }
 
 func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Message, room RoomName) {
-	// Initialize the context.
-	rgba := image.NewRGBA(image.Rect(0, 0, 710, 225))
-	draw.Draw(rgba, rgba.Bounds(), image.White, image.ZP, draw.Src)
-
-	gc := draw2d.NewGraphicContext(rgba)
-	gc.SetDPI(72)
-	draw2d.SetFontFolder("fonts")
-	gc.SetFontData(draw2d.FontData{"DigitalStrip2BB", draw2d.FontFamilySans, draw2d.FontStyleNormal})
-
 	// Our plan can only be 3 panels long
-	comicLength := 3
-
-	if len(script) < comicLength {
-		fmt.Println("Script is too short for a", comicLength, "panel comic.")
-		return
-	}
+	maxComicLength := 3
 
 	// Determine the longest script possible
 	maxLines := 0
@@ -236,7 +222,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 			maxLines = renderer.Lines()
 		}
 	}
-	maxLines *= comicLength
+	maxLines *= maxComicLength
 
 	if len(script) > maxLines {
 		fmt.Println("Script is too long, trimming")
@@ -244,7 +230,16 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 	}
 
 	// Create all plans that are sufficient, and pick a random one.
-	plans := createPlans(comic.Renderers, comicLength, make([]CellRenderer, 0), script, 0)
+	plans := make([][]CellRenderer, 0)
+	planchan := make(chan []CellRenderer, 10)
+	go createPlans(planchan, comic.Renderers, maxComicLength, make([]CellRenderer, 0), script, 0)
+	for {
+		plan, ok := <-planchan
+		if !ok {
+			break
+		}
+		plans = append(plans, plan)
+	}
 
 	if len(plans) == 0 {
 		fmt.Println("No plans available to render script.")
@@ -252,12 +247,23 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 	}
 	plan := plans[rand.Intn(len(plans))]
 
+	width := len(plan)*240 - 10
+
+	// Initialize the context.
+	rgba := image.NewRGBA(image.Rect(0, 0, width, 225))
+	draw.Draw(rgba, rgba.Bounds(), image.White, image.ZP, draw.Src)
+
+	gc := draw2d.NewGraphicContext(rgba)
+	gc.SetDPI(72)
+	draw2d.SetFontFolder("fonts")
+	gc.SetFontData(draw2d.FontData{"DigitalStrip2BB", draw2d.FontFamilySans, draw2d.FontStyleNormal})
+
 	for i, c := 0, 0; i < len(plan); i++ {
 		renderer := plan[i]
 		renderer.Render(gc, comic.Avatars, script[c:c+renderer.Lines()], 5+240*float64(i), 5, 220, 200)
 		c += renderer.Lines()
 	}
-	DrawTextInRect(gc, color.RGBA{0xdd, 0xdd, 0xdd, 0xff}, TEXT_ALIGN_RIGHT, 0.8, "A comic by Septapus ("+string(room)+")", 0, 5, 205, 700, 20)
+	DrawTextInRect(gc, color.RGBA{0xdd, 0xdd, 0xdd, 0xff}, TEXT_ALIGN_RIGHT, 0.8, "A comic by Septapus ("+string(room)+")", 0, 5, 205, float64(width-10), 20)
 
 	comicchan <- rgba
 }
@@ -316,25 +322,24 @@ func countSpeakers(script []*Message, lines int) int {
 	return len(seenMap)
 }
 
-func createPlans(renderers []CellRenderer, comicLength int, currentPlan []CellRenderer, remainingScript []*Message, currentLength int) [][]CellRenderer {
-	if currentLength > comicLength {
-		return nil
-	} else if len(remainingScript) == 0 && currentLength == 3 {
-		return [][]CellRenderer{currentPlan}
+func createPlans(planchan chan []CellRenderer, renderers []CellRenderer, comicLength int, currentPlan []CellRenderer, remainingScript []*Message, currentLength int) {
+	if currentLength == 0 {
+		defer close(planchan)
 	}
-	results := make([][]CellRenderer, 0)
+	if currentLength > comicLength {
+		return
+	} else if len(remainingScript) == 0 {
+		planchan <- currentPlan
+		return
+	}
 	for _, renderer := range renderers {
 		lines := renderer.Lines()
 		if lines <= len(remainingScript) {
 			if renderer.Speakers() == countSpeakers(remainingScript[:lines], lines) {
-				plans := createPlans(renderers, comicLength, append(currentPlan, renderer), remainingScript[lines:], currentLength+1)
-				if len(plans) > 0 {
-					results = append(results, plans...)
-				}
+				createPlans(planchan, renderers, comicLength, append(currentPlan, renderer), remainingScript[lines:], currentLength+1)
 			}
 		}
 	}
-	return results
 }
 
 func DrawSpeech(gc *draw2d.ImageGraphicContext, border, radius, x, y, width, height, pointX, pointY float64) {
