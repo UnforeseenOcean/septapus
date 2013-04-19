@@ -246,7 +246,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 	go createPlans(planchan, comic.Renderers, maxComicLength, make([]CellRenderer, 0), script, 0)
 	for {
 		plan, ok := <-planchan
-		if !ok {
+		if !ok || plan == nil {
 			break
 		}
 		plans = append(plans, plan)
@@ -333,9 +333,6 @@ func countSpeakers(script []*Message, lines int) int {
 }
 
 func createPlans(planchan chan []CellRenderer, renderers []CellRenderer, comicLength int, currentPlan []CellRenderer, remainingScript []*Message, currentLength int) {
-	if currentLength == 0 {
-		defer close(planchan)
-	}
 	if currentLength > comicLength {
 		return
 	} else if len(remainingScript) == 0 {
@@ -349,6 +346,9 @@ func createPlans(planchan chan []CellRenderer, renderers []CellRenderer, comicLe
 				createPlans(planchan, renderers, comicLength, append(currentPlan, renderer), remainingScript[lines:], currentLength+1)
 			}
 		}
+	}
+	if currentLength == 0 {
+		planchan <- nil
 	}
 }
 
