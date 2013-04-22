@@ -279,25 +279,25 @@ const (
 	ALL_ROOMS   RoomName   = "*"
 )
 
+// The default state is that a plugin will not block events from any server or room.
+// Banning a server or room will cause events from that server or room to be filtered in PluginSettings.GetEventHandler.
+// Forcing a server or room will ignore any banned state.
+// It is possible to not ban a server, but ban all the rooms. This will allow plugins to recieve server level events.
 type PluginSettings struct {
-	validServers  map[ServerName]bool
-	validRooms    map[ServerName]map[RoomName]bool
 	bannedServers map[ServerName]bool
 	bannedRooms   map[ServerName]map[RoomName]bool
+	forcedServers map[ServerName]bool
+	forcedRooms   map[ServerName]map[RoomName]bool
 
 	sync.RWMutex
 }
 
-func NewPluginSettings(allowAll bool) *PluginSettings {
+func NewPluginSettings() *PluginSettings {
 	s := &PluginSettings{
-		validServers:  make(map[ServerName]bool),
-		validRooms:    make(map[ServerName]map[RoomName]bool),
 		bannedServers: make(map[ServerName]bool),
 		bannedRooms:   make(map[ServerName]map[RoomName]bool),
-	}
-	if allowAll {
-		s.AddValidServer(ALL_SERVERS)
-		s.AddValidRoom(ALL_SERVERS, ALL_ROOMS)
+		forcedServers: make(map[ServerName]bool),
+		forcedRooms:   make(map[ServerName]map[RoomName]bool),
 	}
 	return s
 }
@@ -314,7 +314,7 @@ func (s *PluginSettings) GetEventHandler(bot *Bot, event EventName) chan *Event 
 			}
 			server := event.Server.Name
 			room := event.Room
-			if s.IsValidServer(server) && !s.IsBannedServer(server) && s.IsValidRoom(server, room) && !s.IsBannedRoom(server, room) {
+			if (s.IsForcedServer(server) || s.IsForcedRoom(server, room)) || !(s.IsBannedServer(server) || s.IsBannedRoom(server, room)) {
 				filteredchannel <- event
 			}
 		}
@@ -322,19 +322,10 @@ func (s *PluginSettings) GetEventHandler(bot *Bot, event EventName) chan *Event 
 	return filteredchannel
 }
 
-func (s *PluginSettings) IsValidServer(server ServerName) bool {
-	return (s.validServers[ALL_SERVERS] || s.validServers[server])
-}
-
-func (s *PluginSettings) isValidRoom(server ServerName, room RoomName) bool {
-	return (s.validRooms[server] != nil && s.validRooms[server][room])
-}
-
-func (s *PluginSettings) IsValidRoom(server ServerName, room RoomName) bool {
-	return (s.isValidRoom(ALL_SERVERS, ALL_ROOMS) || s.isValidRoom(ALL_SERVERS, room) || s.isValidRoom(server, ALL_ROOMS) || s.isValidRoom(server, room))
-}
-
 func (s *PluginSettings) IsBannedServer(server ServerName) bool {
+	s.RLock()
+	defer s.RUnlock()
+
 	return (s.bannedServers[ALL_SERVERS] || s.bannedServers[server])
 }
 
@@ -343,24 +334,28 @@ func (s *PluginSettings) isBannedRoom(server ServerName, room RoomName) bool {
 }
 
 func (s *PluginSettings) IsBannedRoom(server ServerName, room RoomName) bool {
+	s.RLock()
+	defer s.RUnlock()
+
 	return (s.isBannedRoom(ALL_SERVERS, ALL_ROOMS) || s.isBannedRoom(ALL_SERVERS, room) || s.isBannedRoom(server, ALL_ROOMS) || s.isBannedRoom(server, room))
 }
 
-func (s *PluginSettings) AddValidServer(server ServerName) {
-	s.Lock()
-	defer s.Unlock()
+func (s *PluginSettings) IsForcedServer(server ServerName) bool {
+	s.RLock()
+	defer s.RUnlock()
 
-	s.validServers[server] = true
+	return (s.forcedServers[ALL_SERVERS] || s.forcedServers[server])
 }
 
-func (s *PluginSettings) AddValidRoom(server ServerName, room RoomName) {
-	s.Lock()
-	defer s.Unlock()
+func (s *PluginSettings) isForcedRoom(server ServerName, room RoomName) bool {
+	return (s.forcedRooms[server] != nil && s.forcedRooms[server][room])
+}
 
-	if s.validRooms[server] == nil {
-		s.validRooms[server] = make(map[RoomName]bool)
-	}
-	s.validRooms[server][room] = true
+func (s *PluginSettings) IsForcedRoom(server ServerName, room RoomName) bool {
+	s.RLock()
+	defer s.RUnlock()
+
+	return (s.isForcedRoom(ALL_SERVERS, ALL_ROOMS) || s.isForcedRoom(ALL_SERVERS, room) || s.isForcedRoom(server, ALL_ROOMS) || s.isForcedRoom(server, room))
 }
 
 func (s *PluginSettings) AddBannedServer(server ServerName) {
@@ -380,7 +375,24 @@ func (s *PluginSettings) AddBannedRoom(server ServerName, room RoomName) {
 	s.bannedRooms[server][room] = true
 }
 
-var DefaultSettings *PluginSettings = NewPluginSettings(true)
+func (s *PluginSettings) AddForcedServer(server ServerName) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.forcedServers[server] = true
+}
+
+func (s *PluginSettings) AddForcedRoom(server ServerName, room RoomName) {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.forcedRooms[server] == nil {
+		s.forcedRooms[server] = make(map[RoomName]bool)
+	}
+	s.forcedRooms[server][room] = true
+}
+
+var DefaultSettings *PluginSettings = NewPluginSettings()
 
 type SimplePluginInit func(bot *Bot, settings *PluginSettings)
 

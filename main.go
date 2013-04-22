@@ -15,12 +15,12 @@ func main() {
 	flag.Parse()
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	nofreenode := septapus.NewPluginSettings(true)
+	nofreenode := septapus.NewPluginSettings()
 	nofreenode.AddBannedServer("freenode")
 
 	bot := septapus.NewBot()
-	bot.AddPlugin(septapus.NewYouTubePlugin(nofreenode))
-	bot.AddPlugin(septapus.NewURLPlugin(nofreenode))
+	bot.AddPlugin(septapus.NewYouTubePlugin(nil))
+	bot.AddPlugin(septapus.NewURLPlugin(nil))
 	bot.AddPlugin(septapus.NewInvitePlugin(nofreenode))
 	bot.AddPlugin(septapus.NewComicPlugin(nofreenode))
 	bot.AddServer(septapus.NewServerSimple("synirc", "irc.synirc.net", "SeptapusTest", "Septapus", "Septapus v9", []string{"#septapus", "#septapustest"}))
