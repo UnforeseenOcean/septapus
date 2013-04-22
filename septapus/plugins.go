@@ -58,12 +58,12 @@ func isUrl(text string) string {
 	return ""
 }
 
-func NewYouTubePlugin() Plugin {
-	return NewSimplePlugin(YouTubePlugin)
+func NewYouTubePlugin(settings *PluginSettings) Plugin {
+	return NewSimplePlugin(YouTubePlugin, settings)
 }
 
-func YouTubePlugin(bot *Bot) {
-	channel := bot.GetEventHandler(client.PRIVMSG)
+func YouTubePlugin(bot *Bot, settings *PluginSettings) {
+	channel := settings.GetEventHandler(bot, client.PRIVMSG)
 	for {
 		event, ok := <-channel
 		if !ok {
@@ -86,12 +86,12 @@ func YouTubePlugin(bot *Bot) {
 	}
 }
 
-func NewURLPlugin() Plugin {
-	return NewSimplePlugin(URLPlugin)
+func NewURLPlugin(settings *PluginSettings) Plugin {
+	return NewSimplePlugin(URLPlugin, settings)
 }
 
-func URLPlugin(bot *Bot) {
-	channel := bot.GetEventHandler(client.PRIVMSG)
+func URLPlugin(bot *Bot, settings *PluginSettings) {
+	channel := settings.GetEventHandler(bot, client.PRIVMSG)
 	for {
 		event, ok := <-channel
 		if !ok {
@@ -116,5 +116,20 @@ func URLPlugin(bot *Bot) {
 				}
 			}
 		}
+	}
+}
+
+func NewInvitePlugin(settings *PluginSettings) Plugin {
+	return NewSimplePlugin(InvitePlugin, settings)
+}
+
+func InvitePlugin(bot *Bot, settings *PluginSettings) {
+	channel := settings.GetEventHandler(bot, client.INVITE)
+	for {
+		event, ok := <-channel
+		if !ok {
+			break
+		}
+		event.Server.Conn.Join(event.Line.Text())
 	}
 }

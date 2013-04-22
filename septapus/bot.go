@@ -99,8 +99,8 @@ type Bot struct {
 func NewBot() *Bot {
 	logging.InitFromFlags()
 	bot := &Bot{}
-	bot.AddPlugin(NewSimplePlugin(ConnectPlugin))
-	bot.AddPlugin(NewSimplePlugin(DisconnectPlugin))
+	bot.AddPlugin(NewSimplePlugin(ConnectPlugin, nil))
+	bot.AddPlugin(NewSimplePlugin(DisconnectPlugin, nil))
 	return bot
 }
 
@@ -274,21 +274,136 @@ type Plugin interface {
 	Init(bot *Bot)
 }
 
-type SimplePluginInit func(bot *Bot)
+const (
+	ALL_SERVERS ServerName = "*"
+	ALL_ROOMS   RoomName   = "*"
+)
 
-type SimplePlugin struct {
-	init SimplePluginInit
+type PluginSettings struct {
+	validServers  map[ServerName]bool
+	validRooms    map[ServerName]map[RoomName]bool
+	bannedServers map[ServerName]bool
+	bannedRooms   map[ServerName]map[RoomName]bool
+
+	sync.RWMutex
 }
 
-func NewSimplePlugin(init SimplePluginInit) Plugin {
-	return &SimplePlugin{init}
+func NewPluginSettings(allowAll bool) *PluginSettings {
+	s := &PluginSettings{
+		validServers:  make(map[ServerName]bool),
+		validRooms:    make(map[ServerName]map[RoomName]bool),
+		bannedServers: make(map[ServerName]bool),
+		bannedRooms:   make(map[ServerName]map[RoomName]bool),
+	}
+	if allowAll {
+		s.AddValidServer(ALL_SERVERS)
+		s.AddValidRoom(ALL_SERVERS, ALL_ROOMS)
+	}
+	return s
+}
+
+func (s *PluginSettings) GetEventHandler(bot *Bot, event EventName) chan *Event {
+	channel := bot.GetEventHandler(event)
+	filteredchannel := make(chan *Event, cap(channel))
+	go func() {
+		defer close(filteredchannel)
+		for {
+			event, ok := <-channel
+			if !ok {
+				return
+			}
+			server := event.Server.Name
+			room := event.Room
+			if s.IsValidServer(server) && !s.IsBannedServer(server) && s.IsValidRoom(server, room) && !s.IsBannedRoom(server, room) {
+				filteredchannel <- event
+			}
+		}
+	}()
+	return filteredchannel
+}
+
+func (s *PluginSettings) IsValidServer(server ServerName) bool {
+	return (s.validServers[ALL_SERVERS] || s.validServers[server])
+}
+
+func (s *PluginSettings) isValidRoom(server ServerName, room RoomName) bool {
+	return (s.validRooms[server] != nil && s.validRooms[server][room])
+}
+
+func (s *PluginSettings) IsValidRoom(server ServerName, room RoomName) bool {
+	return (s.isValidRoom(ALL_SERVERS, ALL_ROOMS) || s.isValidRoom(ALL_SERVERS, room) || s.isValidRoom(server, ALL_ROOMS) || s.isValidRoom(server, room))
+}
+
+func (s *PluginSettings) IsBannedServer(server ServerName) bool {
+	return (s.bannedServers[ALL_SERVERS] || s.bannedServers[server])
+}
+
+func (s *PluginSettings) isBannedRoom(server ServerName, room RoomName) bool {
+	return (s.bannedRooms[server] != nil && s.bannedRooms[server][room])
+}
+
+func (s *PluginSettings) IsBannedRoom(server ServerName, room RoomName) bool {
+	return (s.isBannedRoom(ALL_SERVERS, ALL_ROOMS) || s.isBannedRoom(ALL_SERVERS, room) || s.isBannedRoom(server, ALL_ROOMS) || s.isBannedRoom(server, room))
+}
+
+func (s *PluginSettings) AddValidServer(server ServerName) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.validServers[server] = true
+}
+
+func (s *PluginSettings) AddValidRoom(server ServerName, room RoomName) {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.validRooms[server] == nil {
+		s.validRooms[server] = make(map[RoomName]bool)
+	}
+	s.validRooms[server][room] = true
+}
+
+func (s *PluginSettings) AddBannedServer(server ServerName) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.bannedServers[server] = true
+}
+
+func (s *PluginSettings) AddBannedRoom(server ServerName, room RoomName) {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.bannedRooms[server] == nil {
+		s.bannedRooms[server] = make(map[RoomName]bool)
+	}
+	s.bannedRooms[server][room] = true
+}
+
+var DefaultSettings *PluginSettings = NewPluginSettings(true)
+
+type SimplePluginInit func(bot *Bot, settings *PluginSettings)
+
+type SimplePlugin struct {
+	settings *PluginSettings
+	init     SimplePluginInit
+}
+
+func NewSimplePlugin(init SimplePluginInit, settings *PluginSettings) Plugin {
+	if settings == nil {
+		settings = DefaultSettings
+	}
+	return &SimplePlugin{
+		settings: settings,
+		init:     init,
+	}
 }
 
 func (plugin *SimplePlugin) Init(bot *Bot) {
-	plugin.init(bot)
+	plugin.init(bot, plugin.settings)
 }
 
-func ConnectPlugin(bot *Bot) {
+func ConnectPlugin(bot *Bot, settings *PluginSettings) {
 	joinAll := func(server *Server) {
 		for _, channel := range server.Rooms {
 			server.Conn.Join(string(channel))
@@ -311,7 +426,7 @@ func ConnectPlugin(bot *Bot) {
 	}
 }
 
-func DisconnectPlugin(bot *Bot) {
+func DisconnectPlugin(bot *Bot, settings *PluginSettings) {
 	channel := bot.GetEventHandler(client.DISCONNECTED)
 	for {
 		event, ok := <-channel

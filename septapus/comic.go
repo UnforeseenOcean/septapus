@@ -43,8 +43,16 @@ const (
 )
 
 type ComicPlugin struct {
-	Avatars   []image.Image
-	Renderers []CellRenderer
+	avatars   []image.Image
+	renderers []CellRenderer
+	settings  *PluginSettings
+}
+
+func NewComicPlugin(settings *PluginSettings) *ComicPlugin {
+	if settings == nil {
+		settings = DefaultSettings
+	}
+	return &ComicPlugin{settings: settings}
 }
 
 type Speaker int
@@ -61,7 +69,7 @@ type Script struct {
 }
 
 func (comic *ComicPlugin) Init(bot *Bot) {
-	joinchan := FilterSelf(bot.GetEventHandler(client.JOIN))
+	joinchan := FilterSelf(comic.settings.GetEventHandler(bot, client.JOIN))
 	scriptchan := make(chan *Script, 100)
 	defer close(scriptchan)
 	comicchan := make(chan image.Image, 100)
@@ -85,9 +93,9 @@ func (comic *ComicPlugin) Init(bot *Bot) {
 			}
 		}
 	}
-	comic.Avatars = avatars
+	comic.avatars = avatars
 
-	comic.Renderers = []CellRenderer{
+	comic.renderers = []CellRenderer{
 		&OneSpeakerCellRenderer{},
 		&FlippedOneSpeakerCellRenderer{},
 		&OneSpeakerMonologueCellRenderer{},
@@ -132,6 +140,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 	logging.Info("Creating comics in", server.Name, room)
 	defer logging.Info("Stopped creating comics in", server.Name, room)
 
+	// If we have heard this event, we can assume that we should be listenening to this room, don't filter through settings.
 	disconnectchan := bot.GetEventHandler(client.DISCONNECTED)
 	partchan := FilterSelfRoom(bot.GetEventHandler(client.PART), server.Name, room)
 	messagechan := FilterRoom(bot.GetEventHandler(client.PRIVMSG), server.Name, room)
@@ -203,7 +212,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 
 				if _, ok := speakers[event.Line.Nick]; !ok {
 					for {
-						speaker = Speaker(rand.Intn(len(comic.Avatars)))
+						speaker = Speaker(rand.Intn(len(comic.avatars)))
 						if _, ok := avatars[speaker]; !ok {
 							avatars[speaker] = true
 							break
@@ -228,7 +237,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 
 	// Determine the longest script possible
 	maxLines := 0
-	for _, renderer := range comic.Renderers {
+	for _, renderer := range comic.renderers {
 		if renderer.Lines() > maxLines {
 			maxLines = renderer.Lines()
 		}
@@ -242,8 +251,8 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 
 	// Create all plans that are sufficient, and pick a random one.
 	plans := make([][]CellRenderer, 0)
-	planchan := make(chan []CellRenderer, len(comic.Renderers)*len(comic.Renderers))
-	go createPlans(planchan, comic.Renderers, maxComicLength, make([]CellRenderer, 0), script, 0)
+	planchan := make(chan []CellRenderer, len(comic.renderers)*len(comic.renderers))
+	go createPlans(planchan, comic.renderers, maxComicLength, make([]CellRenderer, 0), script, 0)
 	for {
 		plan, ok := <-planchan
 		if !ok || plan == nil {
@@ -271,7 +280,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 
 	for i, c := 0, 0; i < len(plan); i++ {
 		renderer := plan[i]
-		renderer.Render(gc, comic.Avatars, script[c:c+renderer.Lines()], 5+240*float64(i), 5, 220, 200)
+		renderer.Render(gc, comic.avatars, script[c:c+renderer.Lines()], 5+240*float64(i), 5, 220, 200)
 		c += renderer.Lines()
 	}
 	DrawTextInRect(gc, color.RGBA{0xdd, 0xdd, 0xdd, 0xff}, TEXT_ALIGN_RIGHT, 0.8, "A comic by Septapus ("+string(room)+")", 0, 5, 205, float64(width-10), 20)
