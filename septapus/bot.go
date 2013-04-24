@@ -188,28 +188,28 @@ func Filter(channel chan *Event, fn func(*Event) bool) chan *Event {
 
 // Filters a channel to only return the events that targets our nick.
 func FilterSelf(channel chan *Event) chan *Event {
-	return filter(channel, func(event *Event) bool {
+	return Filter(channel, func(event *Event) bool {
 		return event.Line.Nick == event.Server.Conn.Me().Nick
 	})
 }
 
 // Filters a channel to only return the events that are fired from a server.
 func FilterServer(channel chan *Event, server ServerName) chan *Event {
-	return filter(channel, func(event *Event) bool {
+	return Filter(channel, func(event *Event) bool {
 		return event.Server.Name == server
 	})
 }
 
 // Filters a channel to only return the events that are fired from a room.
 func FilterRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
-	return filter(channel, func(event *Event) bool {
+	return Filter(channel, func(event *Event) bool {
 		return event.Server.Name == server && event.Room == room
 	})
 }
 
 // Filters a channel to only return the events that target our nick in a room.
 func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
-	return filter(channel, func(event *Event) bool {
+	return Filter(channel, func(event *Event) bool {
 		return event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room
 	})
 }
@@ -272,23 +272,11 @@ func NewPluginSettings() *PluginSettings {
 }
 
 func (s *PluginSettings) GetEventHandler(bot *Bot, event EventName) chan *Event {
-	channel := bot.GetEventHandler(event)
-	filteredchannel := make(chan *Event, cap(channel))
-	go func() {
-		defer close(filteredchannel)
-		for {
-			event, ok := <-channel
-			if !ok {
-				return
-			}
-			server := event.Server.Name
-			room := event.Room
-			if (s.IsForcedServer(server) || s.IsForcedRoom(server, room)) || !(s.IsBannedServer(server) || s.IsBannedRoom(server, room)) {
-				filteredchannel <- event
-			}
-		}
-	}()
-	return filteredchannel
+	return Filter(bot.GetEventHandler(event), func(event *Event) bool {
+		server := event.Server.Name
+		room := event.Room
+		return (s.IsForcedServer(server) || s.IsForcedRoom(server, room)) || !(s.IsBannedServer(server) || s.IsBannedRoom(server, room))
+	})
 }
 
 func (s *PluginSettings) IsBannedServer(server ServerName) bool {
