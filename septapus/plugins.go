@@ -64,11 +64,7 @@ func NewYouTubePlugin(settings *PluginSettings) Plugin {
 
 func YouTubePlugin(bot *Bot, settings *PluginSettings) {
 	channel := settings.GetEventHandler(bot, client.PRIVMSG)
-	for {
-		event, ok := <-channel
-		if !ok {
-			break
-		}
+	for event := range channel {
 		matches := isYouTubeURL(event.Line.Text())
 		if matches != nil {
 			id := matches[len(matches)-2]
@@ -92,11 +88,7 @@ func NewURLPlugin(settings *PluginSettings) Plugin {
 
 func URLPlugin(bot *Bot, settings *PluginSettings) {
 	channel := settings.GetEventHandler(bot, client.PRIVMSG)
-	for {
-		event, ok := <-channel
-		if !ok {
-			break
-		}
+	for event := range channel {
 		url := isUrl(event.Line.Text())
 		if url != "" {
 			if isYouTubeURL(url) == nil {
@@ -125,11 +117,7 @@ func NewInvitePlugin(settings *PluginSettings) Plugin {
 
 func InvitePlugin(bot *Bot, settings *PluginSettings) {
 	channel := settings.GetEventHandler(bot, client.INVITE)
-	for {
-		event, ok := <-channel
-		if !ok {
-			break
-		}
+	for event := range channel {
 		event.Server.Conn.Join(event.Line.Text())
 	}
 }

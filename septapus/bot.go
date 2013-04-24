@@ -178,11 +178,7 @@ func FilterSelf(channel chan *Event) chan *Event {
 	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
-		for {
-			event, ok := <-channel
-			if !ok {
-				return
-			}
+		for event := range channel {
 			if event.Line.Nick == event.Server.Conn.Me().Nick {
 				filteredchannel <- event
 			}
@@ -196,11 +192,7 @@ func FilterServer(channel chan *Event, server ServerName) chan *Event {
 	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
-		for {
-			event, ok := <-channel
-			if !ok {
-				return
-			}
+		for event := range channel {
 			if event.Server.Name == server {
 				filteredchannel <- event
 			}
@@ -214,11 +206,7 @@ func FilterRoom(channel chan *Event, server ServerName, room RoomName) chan *Eve
 	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
-		for {
-			event, ok := <-channel
-			if !ok {
-				return
-			}
+		for event := range channel {
 			if event.Server.Name == server && event.Room == room {
 				filteredchannel <- event
 			}
@@ -232,11 +220,7 @@ func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan 
 	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
-		for {
-			event, ok := <-channel
-			if !ok {
-				return
-			}
+		for event := range channel {
 			if event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room {
 				filteredchannel <- event
 			}
@@ -428,11 +412,7 @@ func ConnectPlugin(bot *Bot, settings *PluginSettings) {
 		}
 	}
 	channel := bot.GetEventHandler(client.CONNECTED)
-	for {
-		event, ok := <-channel
-		if !ok {
-			break
-		}
+	for event := range channel {
 		logging.Info("Connected to", event.Server.Name)
 		joinAll(event.Server)
 	}
@@ -440,11 +420,7 @@ func ConnectPlugin(bot *Bot, settings *PluginSettings) {
 
 func DisconnectPlugin(bot *Bot, settings *PluginSettings) {
 	channel := bot.GetEventHandler(client.DISCONNECTED)
-	for {
-		event, ok := <-channel
-		if !ok {
-			break
-		}
+	for event := range channel {
 		logging.Info("Disconnected from", event.Server.Name)
 		event.Server.Conn.Connect()
 	}
