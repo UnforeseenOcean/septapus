@@ -173,60 +173,45 @@ func (bot *Bot) BroadcastEvent(name EventName, event *Event) {
 	}
 }
 
-// Filters a channel to only return the events that targets our nick.
-func FilterSelf(channel chan *Event) chan *Event {
+func Filter(channel chan *Event, fn func(*Event) bool) chan *Event {
 	filteredchannel := make(chan *Event, cap(channel))
 	go func() {
 		defer close(filteredchannel)
 		for event := range channel {
-			if event.Line.Nick == event.Server.Conn.Me().Nick {
+			if fn(event) {
 				filteredchannel <- event
 			}
 		}
 	}()
 	return filteredchannel
+}
+
+// Filters a channel to only return the events that targets our nick.
+func FilterSelf(channel chan *Event) chan *Event {
+	return filter(channel, func(event *Event) bool {
+		return event.Line.Nick == event.Server.Conn.Me().Nick
+	})
 }
 
 // Filters a channel to only return the events that are fired from a server.
 func FilterServer(channel chan *Event, server ServerName) chan *Event {
-	filteredchannel := make(chan *Event, cap(channel))
-	go func() {
-		defer close(filteredchannel)
-		for event := range channel {
-			if event.Server.Name == server {
-				filteredchannel <- event
-			}
-		}
-	}()
-	return filteredchannel
+	return filter(channel, func(event *Event) bool {
+		return event.Server.Name == server
+	})
 }
 
 // Filters a channel to only return the events that are fired from a room.
 func FilterRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
-	filteredchannel := make(chan *Event, cap(channel))
-	go func() {
-		defer close(filteredchannel)
-		for event := range channel {
-			if event.Server.Name == server && event.Room == room {
-				filteredchannel <- event
-			}
-		}
-	}()
-	return filteredchannel
+	return filter(channel, func(event *Event) bool {
+		return event.Server.Name == server && event.Room == room
+	})
 }
 
 // Filters a channel to only return the events that target our nick in a room.
 func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
-	filteredchannel := make(chan *Event, cap(channel))
-	go func() {
-		defer close(filteredchannel)
-		for event := range channel {
-			if event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room {
-				filteredchannel <- event
-			}
-		}
-	}()
-	return filteredchannel
+	return filter(channel, func(event *Event) bool {
+		return event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room
+	})
 }
 
 func (bot *Bot) Disconnect() {
