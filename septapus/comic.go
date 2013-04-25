@@ -152,6 +152,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 		speaker   Speaker
 		laughs    int
 		lastLaugh string
+		timeout   bool
 	)
 
 	reset := func() {
@@ -160,6 +161,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 		avatars = make(map[Speaker]bool)
 		laughs = 0
 		lastLaugh = ""
+		timeout = false
 	}
 	reset()
 	quit := func() {
@@ -190,7 +192,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 			} else if isLaugh(text) {
 				if lastLaugh != event.Line.Nick || *comicallowrepeats {
 					lastLaugh = event.Line.Nick
-					if laughs == 0 {
+					if laughs <= 0 {
 						laughs = 2
 					} else {
 						laughs++
@@ -205,9 +207,11 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 			} else {
 				if laughs > 0 {
 					laughs--
-					if laughs == 0 {
+					if laughs <= 0 {
 						reset()
 					}
+				} else if timeout {
+					reset()
 				}
 
 				if _, ok := speakers[event.Line.Nick]; !ok {
@@ -226,7 +230,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 				script = append(script, &Message{speaker, Text(text)})
 			}
 		case <-time.After(5 * time.Minute):
-			reset()
+			timeout = true
 		}
 	}
 }
