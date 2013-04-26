@@ -1,6 +1,7 @@
 package septapus
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -211,6 +212,12 @@ func FilterRoom(channel chan *Event, server ServerName, room RoomName) chan *Eve
 func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan *Event {
 	return Filter(channel, func(event *Event) bool {
 		return event.Line.Nick == event.Server.Conn.Me().Nick && event.Server.Name == server && event.Room == room
+	})
+}
+
+func FilterSimpleCommand(channel chan *Event, command string) chan *Event {
+	return Filter(channel, func(event *Event) bool {
+		return strings.HasPrefix(event.Line.Text(), command)
 	})
 }
 
