@@ -1,16 +1,26 @@
 package septapus
 
 import (
+	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"html/template"
 	"math/rand"
+	"mime/multipart"
+	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/golog/logging"
 )
+
+var rpgkey = flag.String("rpgkey", "", "Private key for uploading rpg information")
+var rpgurl = flag.String("rpgurl", "http://septapus.com/rpg/rpg.php", "Url to upload the generated rpg information")
+var rpgallowrepeats = flag.Bool("rpgallowrepeats", false, "Can one person chat repeatedly to fight monsters.")
 
 type Character struct {
 	Name      string
@@ -82,6 +92,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 
 	game.Load(server.Name, room)
 	defer game.Save()
+	game.Upload()
 
 	// If we have heard this event, we can assume that we should be listenening to this room, don't filter through settings.
 	disconnectchan := bot.GetEventHandler(client.DISCONNECTED)
@@ -116,6 +127,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			game.Heal()
 		case <-time.After(5 * time.Minute):
 			game.Save()
+			game.Upload()
 		case event, ok := <-listenchan:
 			if !ok {
 				return
@@ -150,7 +162,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 }
 
 func (game *Game) Load(server ServerName, room RoomName) {
-	filename := "rpg/" + string(server) + string(room)
+	filename := "rpg/" + string(server) + string(room) + ".json"
 
 	if file, err := os.Open(filename); err == nil {
 		defer file.Close()
@@ -168,7 +180,7 @@ func (game *Game) Load(server ServerName, room RoomName) {
 }
 
 func (game *Game) Save() {
-	filename := "rpg/" + string(game.Server) + string(game.Room)
+	filename := "rpg/" + string(game.Server) + string(game.Room) + ".json"
 
 	if file, err := os.Create(filename); err == nil {
 		defer file.Close()
@@ -180,6 +192,93 @@ func (game *Game) Save() {
 		}
 	} else {
 		logging.Info("Error creating file", game.Server, game.Room, filename, err)
+	}
+}
+
+var gameTemplate = template.Must(template.New("root").Parse(gameTemplateSource))
+
+const gameTemplateSource = `
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+	<head>
+		<title>Septapus RPG: {{.Server}}/{{.Room}}</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<link rel="stylesheet" href="../css/septapus.css" type="text/css" media="screen">
+		<link rel="shortcut icon" href="images/favicon.png">
+	</head>
+	<body>
+		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
+		{{if .Characters}}
+		Characters:
+		<br/>
+		<table>
+			<tr><td>Name</td><td>XP</td></dr>
+			{{range .Characters}}
+			<tr><td>{{.Name}}</td><td>{{.XP}}</td></tr>
+			{{end}}
+		</table>
+		{{end}}
+		<p>
+		Current Fight:
+		<br/>
+		{{with .Monster}}
+		{{.Name}} ({{.Health}}/{{.MaxHealth}}) {{if .Characters}}[{{.CharacterList $}}]{{end}}
+		{{end}}
+		<p>
+		Previous Fights:
+		<br/>
+		{{if .Defeated}}
+		<table>
+			<tr><td>Name</td><td>Slayed By</td></dr>
+			{{range .Defeated}}
+			<tr><td>{{.Name}} ({{.Health}}/{{.MaxHealth}})</td><td>{{.SlayedList $}}</td></tr>
+			{{end}}
+		</table>
+		{{end}}
+		<p>
+			<a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-html401" alt="Valid HTML 4.01 Strict" height="31" width="88"></a>
+		</p>
+	</body>
+</html>
+`
+
+var r sync.RWMutex = sync.RWMutex{}
+
+func (game *Game) Upload() {
+	filename := strings.Replace(string(game.Server)+string(game.Room)+".html", "#", ":", -1)
+
+	b := &bytes.Buffer{}
+
+	w := multipart.NewWriter(b)
+	defer w.Close()
+
+	if err := w.WriteField("key", *rpgkey); err != nil {
+		logging.Error("Error creating key:", err)
+		return
+	}
+
+	if err := w.WriteField("filename", filename); err != nil {
+		logging.Error("Error creating filename:", err)
+		return
+	}
+
+	formfile, err := w.CreateFormFile("rpg", filename)
+	if err != nil {
+		logging.Error("Error creating form file:", err)
+		return
+	}
+
+	if err := gameTemplate.Execute(formfile, game); err != nil {
+		logging.Error("Error executing template:", err)
+	}
+
+	w.Close()
+
+	logging.Info("Uploading rpg", filename, *rpgurl, *rpgkey)
+
+	if _, err := http.Post(*rpgurl, w.FormDataContentType(), b); err != nil {
+		logging.Error("Error posting comic to server:", err)
+		return
 	}
 }
 
@@ -216,7 +315,7 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 }
 
 func (game *Game) NewMonster() *Monster {
-	health := 1 + len(game.Defeated)
+	health := len(game.Defeated)
 	difficulty := 1.0
 	name := MonsterNames[rand.Intn(len(MonsterNames))]
 	prefix := "a"
@@ -238,6 +337,9 @@ func (game *Game) NewMonster() *Monster {
 		name = MonsterSmall[rand.Intn(len(MonsterSmall))] + " " + name
 	}
 	health = int(float64(health) * difficulty)
+	if health < 1 {
+		health = 1
+	}
 
 	if len(prefix) > 0 && (name[0] == 'a' || name[0] == 'e' || name[0] == 'i' || name[0] == 'o' || name[0] == 'u') {
 		prefix = "an"
@@ -266,6 +368,19 @@ func (monster *Monster) Heal(health int) {
 	}
 }
 
+// Following methods are for the template.
+func (monster *Monster) CharacterList(game *Game) string {
+	str := ""
+	for name, _ := range monster.Characters {
+		str += game.GetCharacter(name, true).Name + ", "
+	}
+	return str[:len(str)-2]
+}
+
+func (monster *Monster) SlayedList(game *Game) string {
+	return game.GetCharacter(monster.Slayed, true).Name
+}
+
 func (game *Game) Heal() {
 	game.Monster.Heal(1)
 }
@@ -275,7 +390,7 @@ func (game *Game) Attack(event *Event) {
 
 	// Create the character if it doesn't exist
 	game.GetCharacter(name, true)
-	if name == NameKey(event.Server.Conn.Me().Nick) || name == game.Last {
+	if name == NameKey(event.Server.Conn.Me().Nick) || (name == game.Last && !*rpgallowrepeats) {
 		return
 	}
 	game.Last = name
