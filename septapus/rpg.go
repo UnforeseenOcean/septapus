@@ -105,6 +105,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 		bot.RemoveEventHandler(partchan)
 		bot.RemoveEventHandler(messagechan)
 	}
+	save := time.NewTimer(5 * time.Minute).C
 	for {
 		select {
 		// On a disconnect or a part, we need to close our handlers, otherwise a second join would trigger another copy of this function.
@@ -125,7 +126,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			game.Attack(event)
 		case <-time.After(1 * time.Minute):
 			game.Heal()
-		case <-time.After(5 * time.Minute):
+		case <-save:
 			game.Save()
 			game.Upload()
 		case event, ok := <-listenchan:
