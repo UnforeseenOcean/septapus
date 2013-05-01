@@ -92,6 +92,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 
 	game.Load(server.Name, room)
 	defer game.Save()
+
 	game.Upload()
 
 	// If we have heard this event, we can assume that we should be listenening to this room, don't filter through settings.
@@ -105,7 +106,22 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 		bot.RemoveEventHandler(partchan)
 		bot.RemoveEventHandler(messagechan)
 	}
+
 	save := time.NewTimer(5 * time.Minute).C
+	savequit := make(chan bool)
+	// Save in a goroutine so it does not block the RPG, but only do one save at a time
+	go func() {
+		for {
+			select {
+			case <-save:
+				game.Save()
+				game.Upload()
+			case <-savequit:
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		// On a disconnect or a part, we need to close our handlers, otherwise a second join would trigger another copy of this function.
@@ -126,9 +142,6 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			game.Attack(event)
 		case <-time.After(1 * time.Minute):
 			game.Heal()
-		case <-save:
-			game.Save()
-			game.Upload()
 		case event, ok := <-listenchan:
 			if !ok {
 				return

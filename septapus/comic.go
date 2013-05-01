@@ -46,6 +46,11 @@ type ComicPlugin struct {
 	avatars   []image.Image
 	renderers []CellRenderer
 	settings  *PluginSettings
+	fontData  *draw2d.FontData
+}
+
+func init() {
+	draw2d.SetFontFolder("fonts")
 }
 
 func NewComicPlugin(settings *PluginSettings) *ComicPlugin {
@@ -101,6 +106,8 @@ func (comic *ComicPlugin) Init(bot *Bot) {
 		&OneSpeakerMonologueCellRenderer{},
 		&TwoSpeakerCellRenderer{},
 	}
+
+	comic.fontData = &draw2d.FontData{"DigitalStrip2BB", draw2d.FontFamilySans, draw2d.FontStyleNormal}
 
 	for {
 		select {
@@ -279,8 +286,7 @@ func (comic *ComicPlugin) makeComic(comicchan chan image.Image, script []*Messag
 
 	gc := draw2d.NewGraphicContext(rgba)
 	gc.SetDPI(72)
-	draw2d.SetFontFolder("fonts")
-	gc.SetFontData(draw2d.FontData{"DigitalStrip2BB", draw2d.FontFamilySans, draw2d.FontStyleNormal})
+	gc.SetFontData(*comic.fontData)
 
 	for i, c := 0, 0; i < len(plan); i++ {
 		renderer := plan[i]
