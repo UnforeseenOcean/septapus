@@ -107,7 +107,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 		bot.RemoveEventHandler(messagechan)
 	}
 
-	save := time.NewTimer(5 * time.Minute).C
+	save := time.NewTicker(5 * time.Minute).C
 	savequit := make(chan bool)
 	// Save in a goroutine so it does not block the RPG, but only do one save at a time
 	go func() {
@@ -173,6 +173,8 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			}
 		}
 	}
+
+	savequit <- true
 }
 
 func (game *Game) Load(server ServerName, room RoomName) {
