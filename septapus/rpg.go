@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,12 @@ type Character struct {
 	Listening bool
 }
 
+type Characters []*Character
+
+func (c Characters) Len() int           { return len(c) }
+func (c Characters) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c Characters) Less(i, j int) bool { return c[i].XP < c[j].XP }
+
 type Monster struct {
 	Name       string
 	MaxHealth  int
@@ -38,7 +45,14 @@ type Monster struct {
 	Slayed     string
 }
 
+type Monsters []*Monster
+
+func (m Monsters) Len() int           { return len(m) }
+func (m Monsters) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m Monsters) Less(i, j int) bool { return m[i].MaxHealth < m[j].MaxHealth }
+
 type Game struct {
+	sync.RWMutex
 	Server     ServerName
 	Room       RoomName
 	Characters map[string]*Character
@@ -228,8 +242,8 @@ const gameTemplateSource = `
 		Characters:
 		<br/>
 		<table>
-			<tr><td>Name</td><td>XP</td></dr>
-			{{range .Characters}}
+			<tr><td>Name</td><td>XP</td></tr>
+			{{range .GetSortedCharacters}}
 			<tr><td>{{.Name}}</td><td>{{.XP}}</td></tr>
 			{{end}}
 		</table>
@@ -237,17 +251,20 @@ const gameTemplateSource = `
 		<p>
 		Current Fight:
 		<br/>
+		<table>
+		<tr><td>Name</td><td>Health</td><td>Raid</td></tr>
 		{{with .Monster}}
-		{{.Name}} ({{.Health}}/{{.MaxHealth}}) {{if .Characters}}[{{.CharacterList $}}]{{end}}
+		<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.CharacterList $}}</td>
 		{{end}}
+		</table>
 		<p>
 		Previous Fights:
 		<br/>
 		{{if .Defeated}}
 		<table>
-			<tr><td>Name</td><td>Slayed By</td></dr>
+			<tr><td>Name</td><td>Health</td><td>Slayed By</td><td>Raid</td></tr>
 			{{range .Defeated}}
-			<tr><td>{{.Name}} ({{.Health}}/{{.MaxHealth}})</td><td>{{.SlayedList $}}</td></tr>
+			<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.SlayedList $}}</td><td>{{.CharacterList}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -257,8 +274,6 @@ const gameTemplateSource = `
 	</body>
 </html>
 `
-
-var r sync.RWMutex = sync.RWMutex{}
 
 func (game *Game) Upload() {
 	filename := strings.Replace(string(game.Server)+string(game.Room)+".html", "#", ":", -1)
@@ -330,6 +345,15 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 	return character
 }
 
+func (game *Game) GetSortedCharacters() Characters {
+	characters := make(Characters, len(game.Characters))
+	for _, value := range game.Characters {
+		characters = append(characters, value)
+	}
+	sort.Sort(characters)
+	return characters
+}
+
 func (game *Game) NewMonster() *Monster {
 	health := len(game.Defeated)
 	difficulty := 1.0
@@ -389,6 +413,9 @@ func (monster *Monster) CharacterList(game *Game) string {
 	str := ""
 	for name, _ := range monster.Characters {
 		str += game.GetCharacter(name, true).Name + ", "
+	}
+	if str == "" {
+		return str
 	}
 	return str[:len(str)-2]
 }
