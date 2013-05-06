@@ -227,47 +227,46 @@ func (game *Game) Save() {
 
 var gameTemplate = template.Must(template.New("root").Parse(gameTemplateSource))
 
-const gameTemplateSource = `
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 	<head>
 		<title>Septapus RPG: {{.Server}}/{{.Room}}</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 		<link rel="stylesheet" href="../css/septapus.css" type="text/css" media="screen">
-		<link rel="shortcut icon" href="images/favicon.png">
+		<link rel="shortcut icon" href="../images/favicon.png">
 	</head>
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
-		<p>
 		{{if .Characters}}
-		Characters:
-		<br/>
-		<table>
-			<tr><th>Name</th><th>XP</th></tr>
-			{{range .GetSortedCharacters}}
-			<tr><td class="name">{{.Name}}</td><td class="xp">{{.XP}}</td></tr>
+		<p>
+			<h2>Characters:</h2>
+			<table class="characters">
+				<tr><th>Name</th><th>XP</th></tr>
+				{{range .GetSortedCharacters}}
+				<tr><td class="name">{{.Name}}</td><td class="xp">{{.XP}}</td></tr>
+				{{end}}
+			</table>
+		</p>
+		{{end}}
+		<p>
+			<h2>Current Fight:</h2>
+			<table class="currentfight">
+			<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
+			{{with .Monster}}
+			<tr><td class="name">{{.Name}}</td><td class="health{{.HealthClass}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
 			{{end}}
-		</table>
-		{{end}}
-		<p>
-		Current Fight:
-		<br/>
-		<table>
-		<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
-		{{with .Monster}}
-		<tr><td class="name">{{.Name}}</td><td class="health">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
-		{{end}}
-		</table>
-		<p>
-		Previous Fights:
-		<br/>
+			</table>
+		</p>
 		{{if .Defeated}}
-		<table>
-			<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
-			{{range .Defeated}}
-			<tr><td class="name">{{.Name}}</td><td class="health">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
-			{{end}}
-		</table>
+		<p>
+		<h2>Previous Fights:</h2>
+			<table class="previousfights">
+				<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
+				{{range .Defeated}}
+				<tr><td class="name">{{.Name}}</td><td class="health{{.HealthClass}}">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
+				{{end}}
+			</table>
+		</p>
 		{{end}}
 		<p>
 			<a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-html401" alt="Valid HTML 4.01 Strict" height="31" width="88"></a>
@@ -407,6 +406,19 @@ func (monster *Monster) Heal(health int) {
 	if monster.Health > monster.MaxHealth {
 		monster.Health = monster.MaxHealth
 	}
+}
+
+func (monster *Monster) HealthClass() string {
+	if monster.Health >= int(float64(monster.Health)*0.75) {
+		return " green"
+	} else if monster.Health >= int(float64(monster.Health)*0.5) {
+		return " yellow"
+	} else if monster.Health >= int(float64(monster.Health)*0.25) {
+		return " orange"
+	} else if monster.Health > 0 {
+		return " red"
+	}
+	return " darkred"
 }
 
 // Following methods are for the template.
