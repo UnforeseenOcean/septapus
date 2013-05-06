@@ -346,7 +346,7 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 }
 
 func (game *Game) GetSortedCharacters() Characters {
-	characters := make(Characters, len(game.Characters))
+	characters := make(Characters, 0)
 	for _, value := range game.Characters {
 		characters = append(characters, value)
 	}
