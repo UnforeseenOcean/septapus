@@ -429,19 +429,21 @@ func (game *Game) Heal() {
 }
 
 func (game *Game) Attack(event *Event) {
-	name := NameKey(event.Line.Nick)
+	name := event.Line.Nick
+	key := NameKey(name)
 
 	// Create the character if it doesn't exist
 	game.GetCharacter(name, true)
-	if name == NameKey(event.Server.Conn.Me().Nick) || (name == game.Last && !*rpgallowrepeats) {
+
+	if key == NameKey(event.Server.Conn.Me().Nick) || (key == game.Last && !*rpgallowrepeats) {
 		return
 	}
-	game.Last = name
+	game.Last = key
 	monster := game.Monster
 	monster.AddCharacter(name)
 	monster.Health -= len(monster.Characters)
 	if monster.Health <= 0 {
-		monster.Slayed = name
+		monster.Slayed = key
 		xp := int(float64(len(monster.Characters)) * monster.Difficulty)
 		if xp < 1 {
 			xp = 1
@@ -454,7 +456,7 @@ func (game *Game) Attack(event *Event) {
 			char := game.GetCharacter(n, true)
 			char.XP += xp
 			if char.Listening {
-				if n == name {
+				if n == key {
 					event.Server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
 				} else {
 					event.Server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
