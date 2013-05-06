@@ -433,7 +433,8 @@ func (game *Game) Attack(event *Event) {
 	key := NameKey(name)
 
 	// Create the character if it doesn't exist
-	game.GetCharacter(name, true)
+	char := game.GetCharacter(name, true)
+	char.Name = name
 
 	if key == NameKey(event.Server.Conn.Me().Nick) || (key == game.Last && !*rpgallowrepeats) {
 		return
