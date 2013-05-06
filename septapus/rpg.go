@@ -238,13 +238,14 @@ const gameTemplateSource = `
 	</head>
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
+		<p>
 		{{if .Characters}}
 		Characters:
 		<br/>
 		<table>
-			<tr><td>Name</td><td>XP</td></tr>
+			<tr><th>Name</th><th>XP</th></tr>
 			{{range .GetSortedCharacters}}
-			<tr><td>{{.Name}}</td><td>{{.XP}}</td></tr>
+			<tr><td class="name">{{.Name}}</td><td class="xp">{{.XP}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -252,9 +253,9 @@ const gameTemplateSource = `
 		Current Fight:
 		<br/>
 		<table>
-		<tr><td>Name</td><td>Health</td><td>Raid</td></tr>
+		<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
 		{{with .Monster}}
-		<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.CharacterList $}}</td>
+		<tr><td class="name">{{.Name}}</td><td class="health">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
 		{{end}}
 		</table>
 		<p>
@@ -262,9 +263,9 @@ const gameTemplateSource = `
 		<br/>
 		{{if .Defeated}}
 		<table>
-			<tr><td>Name</td><td>Health</td><td>Slayed By</td><td>Raid</td></tr>
+			<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
 			{{range .Defeated}}
-			<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.SlayedList $}}</td><td>{{.CharacterList $}}</td></tr>
+			<tr><td class="name">{{.Name}}</td><td class="health">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
