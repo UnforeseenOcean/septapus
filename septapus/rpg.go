@@ -409,16 +409,17 @@ func (monster *Monster) Heal(health int) {
 }
 
 func (monster *Monster) HealthClass() string {
-	if monster.Health >= int(float64(monster.Health)*0.75) {
-		return " green"
-	} else if monster.Health >= int(float64(monster.Health)*0.5) {
-		return " yellow"
+	if monster.Health < 0 {
+		return " darkred"
+	} else if monster.Health == 0 {
+		return " red"
 	} else if monster.Health >= int(float64(monster.Health)*0.25) {
 		return " orange"
-	} else if monster.Health > 0 {
-		return " red"
+	} else if monster.Health >= int(float64(monster.Health)*0.5) {
+		return " yellow"
+	} else if monster.Health >= int(float64(monster.Health)*0.75) {
+		return " green"
 	}
-	return " darkred"
 }
 
 // Following methods are for the template.
