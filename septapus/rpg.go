@@ -420,6 +420,7 @@ func (monster *Monster) HealthClass() string {
 	} else if monster.Health >= int(float64(monster.Health)*0.75) {
 		return " green"
 	}
+	return ""
 }
 
 // Following methods are for the template.
