@@ -413,9 +413,9 @@ func (monster *Monster) HealthClass() string {
 		return " darkred"
 	} else if monster.Health <= int(float64(monster.Health)*0.25) {
 		return " red"
-	} else if monster.Health < int(float64(monster.Health)*0.5) {
+	} else if monster.Health <= int(float64(monster.Health)*0.5) {
 		return " orange"
-	} else if monster.Health < int(float64(monster.Health)*0.75) {
+	} else if monster.Health <= int(float64(monster.Health)*0.75) {
 		return " yellow"
 	}
 	return " green"
