@@ -33,7 +33,7 @@ type Characters []*Character
 
 func (c Characters) Len() int           { return len(c) }
 func (c Characters) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c Characters) Less(i, j int) bool { return c[i].XP < c[j].XP }
+func (c Characters) Less(i, j int) bool { return c[i].XP > c[j].XP }
 
 type Monster struct {
 	Name       string
@@ -49,7 +49,7 @@ type Monsters []*Monster
 
 func (m Monsters) Len() int           { return len(m) }
 func (m Monsters) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
-func (m Monsters) Less(i, j int) bool { return m[i].MaxHealth < m[j].MaxHealth }
+func (m Monsters) Less(i, j int) bool { return m[i].MaxHealth > m[j].MaxHealth }
 
 type Game struct {
 	sync.RWMutex
