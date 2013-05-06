@@ -264,7 +264,7 @@ const gameTemplateSource = `
 		<table>
 			<tr><td>Name</td><td>Health</td><td>Slayed By</td><td>Raid</td></tr>
 			{{range .Defeated}}
-			<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.SlayedList $}}</td><td>{{.CharacterList}}</td></tr>
+			<tr><td>{{.Name}}</td><td>{{.Health}}/{{.MaxHealth}}</td><td>{{.SlayedList $}}</td><td>{{.CharacterList $}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
