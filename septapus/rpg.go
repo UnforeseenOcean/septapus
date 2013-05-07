@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"image"
 	"image/color"
 	"math/rand"
 	"mime/multipart"
@@ -42,7 +43,7 @@ type Monster struct {
 	MaxHealth  int
 	Health     int
 	Difficulty float64
-	Characters map[string]bool
+	Characters map[string]int
 	Prefix     string
 	Slayed     string
 }
@@ -76,6 +77,8 @@ var HealthColors []color.Color
 var HealthRatios []float64
 var XPColors []color.Color
 var XPRatios []float64
+var RaidColors []color.Color
+var RaidRatios []float64
 
 func init() {
 	MonsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
@@ -87,6 +90,8 @@ func init() {
 	HealthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
 	XPColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
 	XPRatios = []float64{0, 1}
+	RaidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
+	RaidRatios = []float64{0, 1}
 }
 
 func lerp(ratio float64, colors []color.Color, ratios []float64) color.Color {
@@ -226,6 +231,9 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 }
 
 func (game *Game) Load(server ServerName, room RoomName) {
+	game.Lock()
+	defer game.Unlock()
+
 	filename := "rpg/" + string(server) + string(room) + ".json"
 
 	if file, err := os.Open(filename); err == nil {
@@ -244,6 +252,9 @@ func (game *Game) Load(server ServerName, room RoomName) {
 }
 
 func (game *Game) Save() {
+	game.Lock()
+	defer game.Unlock()
+
 	filename := "rpg/" + string(game.Server) + string(game.Room) + ".json"
 
 	if file, err := os.Create(filename); err == nil {
@@ -310,6 +321,9 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 `
 
 func (game *Game) Upload() {
+	game.Lock()
+	defer game.Unlock()
+
 	filename := strings.Replace(string(game.Server)+string(game.Room)+".html", "#", ":", -1)
 
 	b := &bytes.Buffer{}
@@ -424,7 +438,7 @@ func (game *Game) NewMonster() *Monster {
 		MaxHealth:  health,
 		Health:     health,
 		Difficulty: difficulty,
-		Characters: make(map[string]bool),
+		Characters: make(map[string]int),
 		Prefix:     prefix,
 	}
 	return monster
@@ -432,7 +446,7 @@ func (game *Game) NewMonster() *Monster {
 
 func (monster *Monster) AddCharacter(name string) {
 	key := NameKey(name)
-	monster.Characters[key] = true
+	monster.Characters[key]++
 }
 
 func (monster *Monster) Heal(health int) {
@@ -452,22 +466,33 @@ func (monster *Monster) HealthColor() template.CSS {
 	}
 	color := lerp(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
 	if color == nil {
-		return "rgb(0, 0, 0)"
+		color = image.Black
 	}
 	r, g, b, _ := color.RGBA()
 	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
 }
 
 // Following methods are for the template.
-func (monster *Monster) CharacterList(game *Game) string {
+func (monster *Monster) CharacterList(game *Game) template.HTML {
+	max := 1
+	for _, c := range monster.Characters {
+		if c > max {
+			max = c
+		}
+	}
 	str := ""
-	for name, _ := range monster.Characters {
-		str += game.GetCharacter(name, true).Name + ", "
+	for name, c := range monster.Characters {
+		color := lerp(float64(c)/float64(max), RaidColors, RaidRatios)
+		if color == nil {
+			color = image.Black
+		}
+		r, g, b, _ := color.RGBA()
+		str += fmt.Sprintf("<span style=\"color: rgb(%d, %d, %d);\">%s</span>, ", r>>8, g>>8, b>>8, game.GetCharacter(name, true).Name)
 	}
 	if str == "" {
-		return str
+		return template.HTML(str)
 	}
-	return str[:len(str)-2]
+	return template.HTML(str[:len(str)-2])
 }
 
 func (monster *Monster) SlayedList(game *Game) string {
@@ -483,7 +508,7 @@ func (character *Character) XPColor(game *Game) template.CSS {
 	}
 	color := lerp(float64(character.XP)/float64(max), XPColors, XPRatios)
 	if color == nil {
-		return "rgb(0, 0, 0)"
+		color = image.Black
 	}
 	r, g, b, _ := color.RGBA()
 	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
@@ -532,5 +557,7 @@ func (game *Game) Attack(event *Event) {
 		}
 		game.Defeated = append(game.Defeated, monster)
 		game.Monster = game.NewMonster()
+		game.Save()
+		game.Upload()
 	}
 }
