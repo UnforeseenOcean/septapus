@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"image/color"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/golog/logging"
+	"github.com/iopred/septapus/hsv"
 )
 
 var rpgkey = flag.String("rpgkey", "", "Private key for uploading rpg information")
@@ -70,11 +72,43 @@ var MonsterSmall []string
 var MonsterLarge []string
 var MonsterUnique []string
 
+var HealthColors []color.Color
+var HealthRatios []float64
+var XPColors []color.Color
+var XPRatios []float64
+
 func init() {
 	MonsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
 	MonsterLarge = []string{"Large", "Giant", "Huge", "Epic", "King", "Champion", "Queen", "Master", "Lord"}
 	MonsterUnique = []string{"blood", "death", "rot", "sneeze", "pus", "spit", "puke", "burn", "shot", "rend", "slice", "maim"}
 	MonsterNames = []string{"Skeleton", "Zombie", "Slime", "Kobold", "Ant", "Cockatrice", "Pyrolisk", "Werewolf", "Wolf", "Warg", "Hell-hound", "Gas Spore", "Gremlin", "Gargoyle", "Mind Flayer", "Imp", "Mimic", "Nymph", "Goblin", "Orc", "Mastodon", "Kraken", "Spider", "Scorpion", "Unicorn", "Narwhal", "Narhorse", "Worm", "Angel", "Archon", "Bat", "Centaur", "Dragon", "Elemental", "Minotaur", "Lich", "Mummy", "Naga", "Ogre", "Snake", "Troll", "Ghoul", "Golem", "Doppelganger", "Ghost", "Shade", "Demon", "Pit Fiend", "Balrog"}
+
+	HealthColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{153, 0, 0, 1}, color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
+	HealthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
+	XPColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
+	XPRatios = []float64{0, 1}
+}
+
+func lerp(ratio float64, colors []color.Color, ratios []float64) color.Color {
+	if len(ratios) < 2 || ratio < ratios[0] || ratio > ratios[len(ratios)-1] {
+		return nil
+	}
+	for i := 0; i < len(ratios)-1; i++ {
+		if ratio >= ratios[i] && ratio <= ratios[i+1] {
+			r := (ratio - ratios[i]) / (ratios[i+1] - ratios[i])
+			a, ok := hsv.HSVModel.Convert(colors[i]).(hsv.HSV)
+			if !ok {
+				return nil
+			}
+			b, ok := hsv.HSVModel.Convert(colors[i+1]).(hsv.HSV)
+			if !ok {
+				return nil
+			}
+			h := hsv.HSV{a.H + (b.H-a.H)*r, a.S + (b.S-a.S)*r, a.V + (b.V-a.V)*r}
+			return h
+		}
+	}
+	return nil
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -243,7 +277,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			<table class="characters">
 				<tr><th>Name</th><th>XP</th></tr>
 				{{range .GetSortedCharacters}}
-				<tr><td class="name">{{.Name}}</td><td class="xp">{{.XP}}</td></tr>
+				<tr><td class="name">{{.Name}}</td><td class="xp" style="color: {{.XPColor $}};">{{.XP}}</td></tr>
 				{{end}}
 			</table>
 		</p>
@@ -253,7 +287,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			<table class="currentfight">
 			<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
 			{{with .Monster}}
-			<tr><td class="name">{{.Name}}</td><td class="health{{.HealthClass}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
+			<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
 			{{end}}
 			</table>
 		</p>
@@ -263,7 +297,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			<table class="previousfights">
 				<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
 				{{range .Defeated}}
-				<tr><td class="name">{{.Name}}</td><td class="health{{.HealthClass}}">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
+				<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
 				{{end}}
 			</table>
 		</p>
@@ -408,17 +442,20 @@ func (monster *Monster) Heal(health int) {
 	}
 }
 
-func (monster *Monster) HealthClass() string {
-	if monster.Health < 0 {
-		return " darkred"
-	} else if monster.Health <= int(float64(monster.Health)*0.25) {
-		return " red"
-	} else if monster.Health <= int(float64(monster.Health)*0.5) {
-		return " orange"
-	} else if monster.Health <= int(float64(monster.Health)*0.75) {
-		return " yellow"
+func (monster *Monster) HealthColor() template.CSS {
+	health := monster.Health + monster.MaxHealth
+	if health < 0 {
+		health = 0
 	}
-	return " green"
+	if health > monster.MaxHealth*2 {
+		health = monster.MaxHealth * 2
+	}
+	color := lerp(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
+	if color == nil {
+		return "rgb(0, 0, 0)"
+	}
+	r, g, b, _ := color.RGBA()
+	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
 }
 
 // Following methods are for the template.
@@ -435,6 +472,21 @@ func (monster *Monster) CharacterList(game *Game) string {
 
 func (monster *Monster) SlayedList(game *Game) string {
 	return game.GetCharacter(monster.Slayed, true).Name
+}
+
+func (character *Character) XPColor(game *Game) template.CSS {
+	max := 1
+	for _, c := range game.Characters {
+		if c.XP > max {
+			max = c.XP
+		}
+	}
+	color := lerp(float64(character.XP)/float64(max), XPColors, XPRatios)
+	if color == nil {
+		return "rgb(0, 0, 0)"
+	}
+	r, g, b, _ := color.RGBA()
+	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
 }
 
 func (game *Game) Heal() {
