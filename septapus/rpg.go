@@ -307,7 +307,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<h2>Previous Fights:</h2>
 			<table class="previousfights">
 				<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
-				{{range .Defeated}}
+				{{range .DefeatedReverse}}
 				<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
 				{{end}}
 			</table>
@@ -454,6 +454,14 @@ func (monster *Monster) Heal(health int) {
 	if monster.Health > monster.MaxHealth {
 		monster.Health = monster.MaxHealth
 	}
+}
+
+func (monster *Monster) DefeatedReverse() Characters {
+	defeated := make(Characters, len(monster.Defeated))
+	for i := 0; i < len(monster.Defeated); i++ {
+		defeated[i] = monster.Defeated[len(monster.Defeated)-1-i]
+	}
+	return defeated
 }
 
 func (monster *Monster) HealthColor() template.CSS {
