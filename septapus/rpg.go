@@ -60,7 +60,7 @@ type Game struct {
 	Room       RoomName
 	Characters map[string]*Character
 	Monster    *Monster
-	Defeated   []*Monster
+	Defeated   Monsters
 	Last       string
 }
 
@@ -375,7 +375,7 @@ func (game *Game) Init(server ServerName, room RoomName) {
 		game.Monster = game.NewMonster()
 	}
 	if game.Defeated == nil {
-		game.Defeated = make([]*Monster, 0)
+		game.Defeated = make(Monsters, 0)
 	}
 }
 
@@ -456,10 +456,10 @@ func (monster *Monster) Heal(health int) {
 	}
 }
 
-func (monster *Monster) DefeatedReverse() Characters {
-	defeated := make(Characters, len(monster.Defeated))
-	for i := 0; i < len(monster.Defeated); i++ {
-		defeated[i] = monster.Defeated[len(monster.Defeated)-1-i]
+func (game *Game) DefeatedReverse() Monsters {
+	defeated := make(Monsters, len(game.Defeated))
+	for i := 0; i < len(game.Defeated); i++ {
+		defeated[i] = game.Defeated[len(game.Defeated)-1-i]
 	}
 	return defeated
 }
