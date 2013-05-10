@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"image"
 	"image/color"
+	"math"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -28,22 +29,28 @@ var rpgallowrepeats = flag.Bool("rpgallowrepeats", false, "Can one person chat r
 
 type Character struct {
 	Name      string
-	XP        int
+	XP        int64
+	Level     int64
 	Listening bool
 }
 
 type Characters []*Character
 
-func (c Characters) Len() int           { return len(c) }
-func (c Characters) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c Characters) Less(i, j int) bool { return c[i].XP > c[j].XP }
+func (c Characters) Len() int      { return len(c) }
+func (c Characters) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c Characters) Less(i, j int) bool {
+	if c[i].Level == c[j].Level {
+		return c[i].XP > c[j].XP
+	}
+	return c[i].Level > c[j].Level
+}
 
 type Monster struct {
 	Name       string
-	MaxHealth  int
-	Health     int
+	MaxHealth  int64
+	Health     int64
 	Difficulty float64
-	Characters map[string]int
+	Characters map[string]int64
 	Prefix     string
 	Slayed     string
 }
@@ -75,6 +82,8 @@ var MonsterUnique []string
 
 var HealthColors []color.Color
 var HealthRatios []float64
+var LevelColors []color.Color
+var LevelRatios []float64
 var XPColors []color.Color
 var XPRatios []float64
 var RaidColors []color.Color
@@ -88,8 +97,10 @@ func init() {
 
 	HealthColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{153, 0, 0, 1}, color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
 	HealthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
-	XPColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
-	XPRatios = []float64{0, 1}
+	LevelColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
+	LevelRatios = []float64{0, 1}
+	XPColors = []color.Color{color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
+	XPRatios = []float64{0, 0.33, 0.66, 1}
 	RaidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
 	RaidRatios = []float64{0, 1}
 }
@@ -282,26 +293,26 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 	</head>
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
-		{{if .Characters}}
-		<p>
-			<h2>Characters:</h2>
-			<table class="characters">
-				<tr><th>Name</th><th>XP</th></tr>
-				{{range .GetSortedCharacters}}
-				<tr><td class="name">{{.Name}}</td><td class="xp" style="color: {{.XPColor $}};">{{.XP}}</td></tr>
-				{{end}}
-			</table>
-		</p>
-		{{end}}
 		<p>
 			<h2>Current Fight:</h2>
 			<table class="currentfight">
 			<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
 			{{with .Monster}}
-			<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
+			<tr><td class="name">{{.Name}}</td><td class="health" style="{{.HealthStyle}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
 			{{end}}
 			</table>
 		</p>
+		{{if .Characters}}
+		<p>
+			<h2>Characters:</h2>
+			<table class="characters">
+				<tr><th>Name</th><th>Level</th><th>XP</th></tr>
+				{{range .GetSortedCharacters}}
+				<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}</td></tr>
+				{{end}}
+			</table>
+		</p>
+		{{end}}
 		{{if .Defeated}}
 		<p>
 		<h2>Previous Fights:</h2>
@@ -370,6 +381,12 @@ func (game *Game) Init(server ServerName, room RoomName) {
 	}
 	if game.Characters == nil {
 		game.Characters = make(map[string]*Character)
+	} else {
+		for _, character := range game.Characters {
+			if character.XP > 0 && character.Level == 0 {
+				character.Migrate()
+			}
+		}
 	}
 	if game.Monster == nil {
 		game.Monster = game.NewMonster()
@@ -381,6 +398,33 @@ func (game *Game) Init(server ServerName, room RoomName) {
 
 func NameKey(name string) string {
 	return strings.ToLower(name)
+}
+
+func (character *Character) Migrate() {
+	for i := 0; ; i++ {
+		xp := XPNeededForLevel(int64(i))
+		if character.XP > xp {
+			character.Level++
+			character.XP -= xp
+		} else {
+			return
+		}
+	}
+}
+
+func XPNeededForLevel(level int64) int64 {
+	if level < 0 {
+		return 0
+	}
+	return int64(20 + math.Pow(1.4, float64(level)))
+}
+
+func (character *Character) GainXP(xp int64) {
+	character.XP += xp
+	if character.XP > XPNeededForLevel(character.Level) {
+		character.Level++
+		character.XP = 0
+	}
 }
 
 func (game *Game) GetCharacter(name string, create bool) *Character {
@@ -403,7 +447,7 @@ func (game *Game) GetSortedCharacters() Characters {
 }
 
 func (game *Game) NewMonster() *Monster {
-	health := len(game.Defeated)
+	health := int64(len(game.Defeated))
 	difficulty := 1.0
 	name := MonsterNames[rand.Intn(len(MonsterNames))]
 	prefix := "a"
@@ -424,7 +468,7 @@ func (game *Game) NewMonster() *Monster {
 		difficulty -= rand.Float64() / 2.0
 		name = MonsterSmall[rand.Intn(len(MonsterSmall))] + " " + name
 	}
-	health = int(float64(health) * difficulty)
+	health = int64(float64(health) * difficulty)
 	if health < 1 {
 		health = 1
 	}
@@ -438,7 +482,7 @@ func (game *Game) NewMonster() *Monster {
 		MaxHealth:  health,
 		Health:     health,
 		Difficulty: difficulty,
-		Characters: make(map[string]int),
+		Characters: make(map[string]int64),
 		Prefix:     prefix,
 	}
 	return monster
@@ -449,7 +493,7 @@ func (monster *Monster) AddCharacter(name string) {
 	monster.Characters[key]++
 }
 
-func (monster *Monster) Heal(health int) {
+func (monster *Monster) Heal(health int64) {
 	monster.Health += health
 	if monster.Health > monster.MaxHealth {
 		monster.Health = monster.MaxHealth
@@ -464,6 +508,15 @@ func (game *Game) DefeatedReverse() Monsters {
 	return defeated
 }
 
+func lerpColor(ratio float64, colors []color.Color, ratios []float64) template.CSS {
+	color := lerp(ratio, colors, ratios)
+	if color == nil {
+		color = image.Black
+	}
+	r, g, b, _ := color.RGBA()
+	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
+}
+
 func (monster *Monster) HealthColor() template.CSS {
 	health := monster.Health + monster.MaxHealth
 	if health < 0 {
@@ -472,17 +525,23 @@ func (monster *Monster) HealthColor() template.CSS {
 	if health > monster.MaxHealth*2 {
 		health = monster.MaxHealth * 2
 	}
-	color := lerp(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
-	if color == nil {
-		color = image.Black
+	return lerpColor(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
+}
+
+func (monster *Monster) HealthStyle() template.CSS {
+	health := monster.Health + monster.MaxHealth
+	if health < 0 {
+		health = 0
 	}
-	r, g, b, _ := color.RGBA()
-	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
+	if health > monster.MaxHealth*2 {
+		health = monster.MaxHealth * 2
+	}
+	return StatusBarStyle(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
 }
 
 // Following methods are for the template.
 func (monster *Monster) CharacterList(game *Game) template.HTML {
-	max := 1
+	max := int64(1)
 	for _, c := range monster.Characters {
 		if c > max {
 			max = c
@@ -490,12 +549,7 @@ func (monster *Monster) CharacterList(game *Game) template.HTML {
 	}
 	str := ""
 	for name, c := range monster.Characters {
-		color := lerp(float64(c)/float64(max), RaidColors, RaidRatios)
-		if color == nil {
-			color = image.Black
-		}
-		r, g, b, _ := color.RGBA()
-		str += fmt.Sprintf("<span style=\"color: rgb(%d, %d, %d);\">%s</span>, ", r>>8, g>>8, b>>8, game.GetCharacter(name, true).Name)
+		str += fmt.Sprintf("<span style=\"color: %s;\">%s</span>, ", lerpColor(float64(c)/float64(max), RaidColors, RaidRatios), game.GetCharacter(name, true).Name)
 	}
 	if str == "" {
 		return template.HTML(str)
@@ -507,19 +561,31 @@ func (monster *Monster) SlayedList(game *Game) string {
 	return game.GetCharacter(monster.Slayed, true).Name
 }
 
-func (character *Character) XPColor(game *Game) template.CSS {
-	max := 1
-	for _, c := range game.Characters {
-		if c.XP > max {
-			max = c.XP
-		}
-	}
-	color := lerp(float64(character.XP)/float64(max), XPColors, XPRatios)
+func StatusBarStyle(ratio float64, colors []color.Color, ratios []float64) template.CSS {
+	color := lerp(ratio, colors, ratios)
 	if color == nil {
 		color = image.Black
 	}
 	r, g, b, _ := color.RGBA()
-	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
+	p := func(bit string, color string, ratio float64) string {
+		return fmt.Sprintf("background-image: %s(left , %s 0%%, %s %.0f%%, rgba(0,0,0,0) %.0f%%, rgba(0, 0, 0, 0) 100%%);", bit, color, color, ratio, ratio)
+	}
+	cs := fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8)
+	return template.CSS(p("linear-gradient", cs, ratio*100) + p("-o-linear-gradient", cs, ratio*100) + p("-moz-linear-gradient", cs, ratio*100) + p("-webkit-linear-gradient", cs, ratio*100) + p("-ms-linear-gradient", cs, ratio*100))
+}
+
+func (character *Character) XPStyle() template.CSS {
+	return StatusBarStyle(float64(character.XP)/float64(XPNeededForLevel(character.Level)), XPColors, XPRatios)
+}
+
+func (character *Character) LevelColor(game *Game) template.CSS {
+	max := int64(0)
+	for _, c := range game.Characters {
+		if c.Level > max {
+			max = c.Level
+		}
+	}
+	return lerpColor(float64(character.Level)/float64(max), LevelColors, LevelRatios)
 }
 
 func (game *Game) Heal() {
@@ -540,10 +606,10 @@ func (game *Game) Attack(event *Event) {
 	game.Last = key
 	monster := game.Monster
 	monster.AddCharacter(name)
-	monster.Health -= len(monster.Characters)
+	monster.Health -= int64(len(monster.Characters))
 	if monster.Health <= 0 {
 		monster.Slayed = key
-		xp := int(float64(len(monster.Characters)) * monster.Difficulty)
+		xp := int64(float64(len(monster.Characters)) * monster.Difficulty)
 		if xp < 1 {
 			xp = 1
 		}
@@ -553,7 +619,7 @@ func (game *Game) Attack(event *Event) {
 		}
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
-			char.XP += xp
+			char.GainXP(xp)
 			if char.Listening {
 				if n == key {
 					event.Server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
