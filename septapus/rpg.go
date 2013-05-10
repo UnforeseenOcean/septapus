@@ -27,10 +27,32 @@ var rpgkey = flag.String("rpgkey", "", "Private key for uploading rpg informatio
 var rpgurl = flag.String("rpgurl", "http://septapus.com/rpg/rpg.php", "Url to upload the generated rpg information")
 var rpgallowrepeats = flag.Bool("rpgallowrepeats", false, "Can one person chat repeatedly to fight monsters.")
 
+const (
+	ITEM_WEAPON = iota
+	ITEM_HEAD
+	ITEM_BODY
+	NUM_ITEMS
+)
+
+const (
+	ITEM_JUNK = iota
+	ITEM_NORMAL
+	ITEM_MAGIC
+	ITEM_RARE
+	ITEM_UNIQUE
+)
+
+type Item struct {
+	Name  string
+	Level int64
+	Type  int
+}
+
 type Character struct {
 	Name      string
 	XP        int64
 	Level     int64
+	Items     []*Item
 	Listening bool
 }
 
@@ -75,19 +97,26 @@ type RPGPlugin struct {
 	settings *PluginSettings
 }
 
-var MonsterNames []string
-var MonsterSmall []string
-var MonsterLarge []string
-var MonsterUnique []string
+var (
+	MonsterNames  []string
+	MonsterSmall  []string
+	MonsterLarge  []string
+	MonsterUnique []string
 
-var HealthColors []color.Color
-var HealthRatios []float64
-var LevelColors []color.Color
-var LevelRatios []float64
-var XPColors []color.Color
-var XPRatios []float64
-var RaidColors []color.Color
-var RaidRatios []float64
+	HealthColors []color.Color
+	HealthRatios []float64
+	LevelColors  []color.Color
+	LevelRatios  []float64
+	XPColors     []color.Color
+	XPRatios     []float64
+	RaidColors   []color.Color
+	RaidRatios   []float64
+
+	ItemNames [][]string
+	Prefixes  []string
+	Suffixes  []string
+	Uniques   []string
+)
 
 func init() {
 	MonsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
@@ -103,6 +132,18 @@ func init() {
 	XPRatios = []float64{0, 0.33, 0.66, 1}
 	RaidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
 	RaidRatios = []float64{0, 1}
+
+	Prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Engorging", "Poetic", "Frothing"}
+	Suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Fruit", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Happiness", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
+	Uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
+	ItemNames = [][]string{
+		//ITEM_HEAD
+		[]string{"Cap", "Skull Cap", "Helm", "Full Helm", "Great Helm", "Mask", "Crown", "Bone Helm", "Circlet", "Coronet", "Diadem", "Casque", "Armet"},
+		//ITEM_BODY
+		[]string{"Quilted Armor", "Leather Armor", "Hard Leather Armor", "Studded Leather Armor", "Ring Mail", "Scale Mail", "Chain Mail", "Splint Mail", "Light Plate", "Field Plate", "Plate Mail", "Full Plate Mail", "Mesh Armor", "Linked Mail"},
+		//ITEM_WEAPON
+		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Scabbard", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
+	}
 }
 
 func lerp(ratio float64, colors []color.Color, ratios []float64) color.Color {
@@ -305,9 +346,9 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<p>
 		<h2>Characters:</h2>
 		<table class="characters">
-			<tr><th>Name</th><th>Level</th><th>XP</th></tr>
+			<tr><th>Name</th><th>Level</th><th>XP</th><th>Items</th></tr>
 			{{range .GetSortedCharacters}}
-			<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td></tr>
+			<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td><td class="items">{{.ItemList}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -380,9 +421,7 @@ func (game *Game) Init(server ServerName, room RoomName) {
 		game.Characters = make(map[string]*Character)
 	} else {
 		for _, character := range game.Characters {
-			if character.XP > 0 && character.Level == 0 {
-				character.Migrate()
-			}
+			character.Migrate()
 		}
 	}
 	if game.Monster == nil {
@@ -403,9 +442,99 @@ func (character *Character) Migrate() {
 			character.XP -= character.MaxXP()
 			character.Level++
 		} else {
-			return
+			break
 		}
 	}
+	if character.Items == nil {
+		character.Items = make([]*Item, NUM_ITEMS)
+	}
+	character.AddItems()
+}
+
+func (character *Character) ItemLevel() int64 {
+	count := int64(0)
+	for i := 0; i < NUM_ITEMS; i++ {
+		if character.Items[i] != nil {
+			count += character.Items[i].Level
+		}
+	}
+	return count
+}
+
+func (character *Character) AddItems() {
+	for i := character.ItemLevel(); i < character.Level; i++ {
+		itemType := rand.Intn(NUM_ITEMS)
+		item := character.Items[itemType]
+		itemLevel := int64(1)
+		if item != nil {
+			itemLevel = item.Level + 1
+		}
+		character.Items[itemType] = NewItem(itemType, itemLevel)
+	}
+}
+
+func (item *Item) Color() string {
+	switch item.Type {
+	case ITEM_NORMAL:
+		return "rgb(144, 252, 0)"
+	case ITEM_MAGIC:
+		return "rgb(60, 107, 255)"
+	case ITEM_RARE:
+		return "rgb(143, 56, 237)"
+	case ITEM_UNIQUE:
+		return "rgb(142, 137, 87)"
+	}
+	return "rgb(0, 0, 0)"
+}
+
+func (character *Character) ItemList() template.HTML {
+	str := ""
+	for _, item := range character.Items {
+		if item != nil {
+			str += fmt.Sprintf("<span style=\"color: %v;\">%v</span> (%d), ", item.Color(), item.Name, item.Level)
+		}
+	}
+	if str == "" {
+		return template.HTML(str)
+	}
+	return template.HTML(str[:len(str)-2])
+}
+
+func RandomItemName(slot int, level int64) (string, int) {
+	if slot == ITEM_WEAPON && level >= 10 && rand.Float64() > 0.95 {
+		return Uniques[rand.Intn(len(Uniques))], ITEM_UNIQUE
+	}
+
+	names := ItemNames[slot]
+	name := names[rand.Intn(len(names))]
+
+	chance := int64(4)
+
+	itemtype := 0
+	if level > 9 {
+		itemtype++
+	}
+
+	prefix := rand.Float64() > 0.5
+	for i := 0; i < 2; i++ {
+		if rand.Float64() < float64(level-chance)/float64(chance) {
+			if prefix {
+				name = Prefixes[rand.Intn(len(Prefixes))] + " " + name
+			} else {
+				name = name + " of " + Suffixes[rand.Intn(len(Suffixes))]
+			}
+			level -= chance
+			prefix = !prefix
+			itemtype++
+		}
+	}
+
+	return name, itemtype
+}
+
+func NewItem(slot int, level int64) *Item {
+	name, itemtype := RandomItemName(slot, level)
+	return &Item{name, level, itemtype}
 }
 
 func XPNeededForLevel(level int64) int64 {
@@ -424,6 +553,7 @@ func (character *Character) GainXP(xp int64) bool {
 	if character.XP >= character.MaxXP() {
 		character.Level++
 		character.XP = 0
+		character.AddItems()
 		return true
 	}
 	return false
@@ -433,7 +563,7 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 	key := NameKey(name)
 	character := game.Characters[key]
 	if character == nil && create {
-		character = &Character{Name: name}
+		character = &Character{Name: name, Items: make([]*Item, NUM_ITEMS)}
 		game.Characters[key] = character
 	}
 	return character
@@ -499,6 +629,7 @@ func (monster *Monster) Heal(health int64) {
 	monster.Health += health
 	if monster.Health > monster.MaxHealth {
 		monster.Health = monster.MaxHealth
+		monster.Characters = make(map[string]int64)
 	}
 }
 
