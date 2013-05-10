@@ -402,10 +402,9 @@ func NameKey(name string) string {
 
 func (character *Character) Migrate() {
 	for i := 0; ; i++ {
-		xp := XPNeededForLevel(int64(i))
-		if character.XP > xp {
+		if character.XP >= character.MaxXP {
+			character.XP -= character.MaxXP
 			character.Level++
-			character.XP -= xp
 		} else {
 			return
 		}
@@ -425,7 +424,7 @@ func (character *Character) MaxXP() int64 {
 
 func (character *Character) GainXP(xp int64) bool {
 	character.XP += xp
-	if character.XP > character.MaxXP() {
+	if character.XP >= character.MaxXP() {
 		character.Level++
 		character.XP = 0
 		return true
