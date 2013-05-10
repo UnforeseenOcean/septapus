@@ -308,7 +308,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			<table class="characters">
 				<tr><th>Name</th><th>Level</th><th>XP</th></tr>
 				{{range .GetSortedCharacters}}
-				<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}</td></tr>
+				<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td></tr>
 				{{end}}
 			</table>
 		</p>
@@ -419,12 +419,18 @@ func XPNeededForLevel(level int64) int64 {
 	return int64(20 + math.Pow(1.4, float64(level)))
 }
 
-func (character *Character) GainXP(xp int64) {
+func (character *Character) MaxXP() int64 {
+	return XPNeededForLevel(character.Level)
+}
+
+func (character *Character) GainXP(xp int64) bool {
 	character.XP += xp
-	if character.XP > XPNeededForLevel(character.Level) {
+	if character.XP > character.MaxXP() {
 		character.Level++
 		character.XP = 0
+		return true
 	}
+	return false
 }
 
 func (game *Game) GetCharacter(name string, create bool) *Character {
@@ -619,12 +625,15 @@ func (game *Game) Attack(event *Event) {
 		}
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
-			char.GainXP(xp)
+			levelled := char.GainXP(xp)
 			if char.Listening {
 				if n == key {
-					event.Server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(name, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
 				} else {
-					event.Server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(name, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
+				}
+				if levelled {
+					event.Server.Conn.Privmsg(name, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
 				}
 			}
 
