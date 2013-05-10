@@ -294,35 +294,32 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
 		<p>
-			<h2>Current Fight:</h2>
-			<table class="currentfight">
-			<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
-			{{with .Monster}}
-			<tr><td class="name">{{.Name}}</td><td class="health" style="{{.HealthStyle}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
-			{{end}}
-			</table>
-		</p>
+		<h2>Current Fight:</h2>
+		<table class="currentfight">
+		<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
+		{{with .Monster}}
+		<tr><td class="name">{{.Name}}</td><td class="health" style="{{.HealthStyle}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
+		{{end}}
+		</table>
 		{{if .Characters}}
 		<p>
-			<h2>Characters:</h2>
-			<table class="characters">
-				<tr><th>Name</th><th>Level</th><th>XP</th></tr>
-				{{range .GetSortedCharacters}}
-				<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td></tr>
-				{{end}}
-			</table>
-		</p>
+		<h2>Characters:</h2>
+		<table class="characters">
+			<tr><th>Name</th><th>Level</th><th>XP</th></tr>
+			{{range .GetSortedCharacters}}
+			<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td></tr>
+			{{end}}
+		</table>
 		{{end}}
 		{{if .Defeated}}
 		<p>
 		<h2>Previous Fights:</h2>
-			<table class="previousfights">
-				<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
-				{{range .DefeatedReverse}}
-				<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
-				{{end}}
-			</table>
-		</p>
+		<table class="previousfights">
+			<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
+			{{range .DefeatedReverse}}
+			<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
+			{{end}}
+		</table>
 		{{end}}
 		<p>
 			<a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-html401" alt="Valid HTML 4.01 Strict" height="31" width="88"></a>
@@ -401,7 +398,7 @@ func NameKey(name string) string {
 }
 
 func (character *Character) Migrate() {
-	for i := 0; ; i++ {
+	for {
 		if character.XP >= character.MaxXP() {
 			character.XP -= character.MaxXP()
 			character.Level++
