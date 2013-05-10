@@ -476,13 +476,13 @@ func (character *Character) AddItems() {
 func (item *Item) Color() string {
 	switch item.Type {
 	case ITEM_NORMAL:
-		return "rgb(144, 252, 0)"
+		return "rgb(0, 204, 0)"
 	case ITEM_MAGIC:
-		return "rgb(60, 107, 255)"
+		return "rgb(0, 0, 204)"
 	case ITEM_RARE:
-		return "rgb(143, 56, 237)"
+		return "rgb(132, 37, 201)"
 	case ITEM_UNIQUE:
-		return "rgb(227, 135, 0)"
+		return "rgb(255, 153, 0)"
 	}
 	return "rgb(0, 0, 0)"
 }
