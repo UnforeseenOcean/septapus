@@ -482,7 +482,7 @@ func (item *Item) Color() string {
 	case ITEM_RARE:
 		return "rgb(143, 56, 237)"
 	case ITEM_UNIQUE:
-		return "rgb(142, 137, 87)"
+		return "rgb(227, 135, 0)"
 	}
 	return "rgb(0, 0, 0)"
 }
