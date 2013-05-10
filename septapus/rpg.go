@@ -402,8 +402,8 @@ func NameKey(name string) string {
 
 func (character *Character) Migrate() {
 	for i := 0; ; i++ {
-		if character.XP >= character.MaxXP {
-			character.XP -= character.MaxXP
+		if character.XP >= character.MaxXP() {
+			character.XP -= character.MaxXP()
 			character.Level++
 		} else {
 			return
