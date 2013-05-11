@@ -28,10 +28,10 @@ var rpgurl = flag.String("rpgurl", "http://septapus.com/rpg/rpg.php", "Url to up
 var rpgallowrepeats = flag.Bool("rpgallowrepeats", false, "Can one person chat repeatedly to fight monsters.")
 
 const (
-	ITEM_WEAPON = iota
-	ITEM_HEAD
-	ITEM_BODY
-	NUM_ITEMS
+	SLOT_WEAPON = iota
+	SLOT_HEAD
+	SLOT_BODY
+	NUM_SLOTS
 )
 
 const (
@@ -43,9 +43,9 @@ const (
 )
 
 type Item struct {
-	Name  string
-	Level int64
-	Type  int
+	Name   string
+	Level  int64
+	Rarity int
 }
 
 type Character struct {
@@ -107,10 +107,9 @@ var (
 	HealthRatios []float64
 	LevelColors  []color.Color
 	LevelRatios  []float64
-	XPColors     []color.Color
-	XPRatios     []float64
 	RaidColors   []color.Color
 	RaidRatios   []float64
+	ItemColors   []color.Color
 
 	ItemNames [][]string
 	Prefixes  []string
@@ -128,44 +127,22 @@ func init() {
 	HealthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
 	LevelColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
 	LevelRatios = []float64{0, 1}
-	XPColors = []color.Color{color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
-	XPRatios = []float64{0, 0.33, 0.66, 1}
 	RaidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
 	RaidRatios = []float64{0, 1}
+
+	ItemColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{0, 204, 0, 1}, color.RGBA{0, 0, 204, 1}, color.RGBA{132, 37, 201, 1}, color.RGBA{255, 153, 0, 1}}
 
 	Prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Engorging", "Poetic", "Frothing"}
 	Suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
 	Uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
 	ItemNames = [][]string{
+		//ITEM_WEAPON
+		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Scabbard", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
 		//ITEM_HEAD
 		[]string{"Cap", "Skull Cap", "Helm", "Full Helm", "Great Helm", "Mask", "Crown", "Bone Helm", "Circlet", "Coronet", "Diadem", "Casque", "Armet"},
 		//ITEM_BODY
 		[]string{"Quilted Armor", "Leather Armor", "Hard Leather Armor", "Studded Leather Armor", "Ring Mail", "Scale Mail", "Chain Mail", "Splint Mail", "Light Plate", "Field Plate", "Plate Mail", "Full Plate Mail", "Mesh Armor", "Linked Mail"},
-		//ITEM_WEAPON
-		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Scabbard", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
 	}
-}
-
-func lerp(ratio float64, colors []color.Color, ratios []float64) color.Color {
-	if len(ratios) < 2 || ratio < ratios[0] || ratio > ratios[len(ratios)-1] {
-		return nil
-	}
-	for i := 0; i < len(ratios)-1; i++ {
-		if ratio >= ratios[i] && ratio <= ratios[i+1] {
-			r := (ratio - ratios[i]) / (ratios[i+1] - ratios[i])
-			a, ok := hsv.HSVModel.Convert(colors[i]).(hsv.HSV)
-			if !ok {
-				return nil
-			}
-			b, ok := hsv.HSVModel.Convert(colors[i+1]).(hsv.HSV)
-			if !ok {
-				return nil
-			}
-			h := hsv.HSV{a.H + (b.H-a.H)*r, a.S + (b.S-a.S)*r, a.V + (b.V-a.V)*r}
-			return h
-		}
-	}
-	return nil
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -196,9 +173,6 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 	game := &Game{}
 
 	game.Load(server.Name, room)
-	defer game.Save()
-
-	game.Upload()
 
 	// If we have heard this event, we can assume that we should be listenening to this room, don't filter through settings.
 	disconnectchan := bot.GetEventHandler(client.DISCONNECTED)
@@ -212,15 +186,20 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 		bot.RemoveEventHandler(messagechan)
 	}
 
-	save := time.NewTicker(5 * time.Minute).C
+	save := func() {
+		game.Save()
+		game.Upload()
+	}
+	save()
+
+	saveticker := time.NewTicker(5 * time.Minute).C
 	savequit := make(chan bool)
 	// Save in a goroutine so it does not block the RPG, but only do one save at a time
 	go func() {
 		for {
 			select {
-			case <-save:
-				game.Save()
-				game.Upload()
+			case <-saveticker:
+				save()
 			case <-savequit:
 				return
 			}
@@ -248,6 +227,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 		case <-time.After(1 * time.Minute):
 			game.Heal()
 		case event, ok := <-listenchan:
+			game.Lock()
 			if !ok {
 				return
 			}
@@ -276,6 +256,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			} else {
 				event.Server.Conn.Privmsg(event.Line.Nick, "Not listening in "+string(room))
 			}
+			game.Unlock()
 		}
 	}
 
@@ -332,6 +313,9 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<link rel="stylesheet" href="../css/septapus.css" type="text/css" media="screen">
 		<link rel="shortcut icon" href="../images/favicon.png">
 	</head>
+	<style type="text/css">
+	{{.GenerateStyles}}
+	</style>
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
 		<p>
@@ -339,7 +323,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<table class="currentfight">
 		<tr><th>Name</th><th>Health</th><th>Raid</th></tr>
 		{{with .Monster}}
-		<tr><td class="name">{{.Name}}</td><td class="health" style="{{.HealthStyle}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
+		<tr><td class="name">{{.Name}}</td><td class="health bar{{.HealthBarPercentage}}">{{.Health}}/{{.MaxHealth}}</td><td class="raid">{{.CharacterList $}}</td>
 		{{end}}
 		</table>
 		{{if .Characters}}
@@ -348,7 +332,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<table class="characters">
 			<tr><th>Name</th><th>Level</th><th>XP</th><th>Items</th></tr>
 			{{range .GetSortedCharacters}}
-			<tr><td class="name">{{.Name}}</td><td class="level" style="color: {{.LevelColor $}};">{{.Level}}</td><td class="xp" style="{{.XPStyle}}">{{.XP}}/{{.MaxXP}}</td><td class="items">{{.ItemList}}</td></tr>
+			<tr><td class="name">{{.Name}}</td><td class="level level{{.LevelPercentage $}}">{{.Level}}</td><td class="xp bar{{.XPPercentage}}">{{.XP}}/{{.MaxXP}}</td><td class="items">{{.ItemList}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -358,7 +342,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<table class="previousfights">
 			<tr><th>Name</th><th>Health</th><th>Slayed By</th><th>Raid</th></tr>
 			{{range .DefeatedReverse}}
-			<tr><td class="name">{{.Name}}</td><td class="health" style="color: {{.HealthColor}};">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
+			<tr><td class="name">{{.Name}}</td><td class="health health{{.HealthPercentage}}">{{.Health}}/{{.MaxHealth}}</td><td class="slayed">{{.SlayedList $}}</td><td class="raid">{{.CharacterList $}}</td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -368,6 +352,70 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 	</body>
 </html>
 `
+
+func colorString(color color.Color) string {
+	r, g, b, _ := color.RGBA()
+	return fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8)
+}
+
+func lerp(ratio float64, colors []color.Color, ratios []float64) color.Color {
+	if len(ratios) < 2 || ratio < ratios[0] || ratio > ratios[len(ratios)-1] {
+		return nil
+	}
+	for i := 0; i < len(ratios)-1; i++ {
+		if ratio >= ratios[i] && ratio <= ratios[i+1] {
+			r := (ratio - ratios[i]) / (ratios[i+1] - ratios[i])
+			a, ok := hsv.HSVModel.Convert(colors[i]).(hsv.HSV)
+			if !ok {
+				return nil
+			}
+			b, ok := hsv.HSVModel.Convert(colors[i+1]).(hsv.HSV)
+			if !ok {
+				return nil
+			}
+			h := hsv.HSV{a.H + (b.H-a.H)*r, a.S + (b.S-a.S)*r, a.V + (b.V-a.V)*r}
+			return h
+		}
+	}
+	return nil
+}
+
+func lerpColorString(ratio float64, colors []color.Color, ratios []float64) template.CSS {
+	color := lerp(ratio, colors, ratios)
+	if color == nil {
+		color = image.Black
+	}
+	return template.CSS(colorString(color))
+}
+
+func barColor(ratio float64, colorratio float64, colors []color.Color, ratios []float64) template.CSS {
+	color := lerp(colorratio, colors, ratios)
+	if color == nil {
+		color = image.Black
+	}
+	p := func(bit string, color string, ratio float64) string {
+		return fmt.Sprintf("background-image: %s(left , %s 0%%, %s %.0f%%, rgba(0,0,0,0) %.0f%%, rgba(0, 0, 0, 0) 100%%);", bit, color, color, ratio, ratio)
+	}
+	cs := colorString(color)
+	return template.CSS(p("linear-gradient", cs, ratio*100.0) + p("-o-linear-gradient", cs, ratio*100.0) + p("-moz-linear-gradient", cs, ratio*100.0) + p("-webkit-linear-gradient", cs, ratio*100.0) + p("-ms-linear-gradient", cs, ratio*100.0))
+}
+
+func (game *Game) GenerateStyles() template.CSS {
+	str := ""
+	for i := 0; i <= 200; i++ {
+		str += fmt.Sprintf(".health%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(200), HealthColors, HealthRatios))
+	}
+	for i := 0; i <= 100; i++ {
+		str += fmt.Sprintf(".raid%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), RaidColors, RaidRatios))
+		str += fmt.Sprintf(".level%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), LevelColors, LevelRatios))
+		barRatio := float64(i) / float64(100)
+		str += fmt.Sprintf(".bar%d { %v }\n", i, barColor(barRatio, 0.5+barRatio/2.0, HealthColors, HealthRatios))
+	}
+	for i := 0; i < len(ItemColors); i++ {
+		str += fmt.Sprintf(".item%d { color: %v; }\n", i, colorString(ItemColors[i]))
+	}
+	return template.CSS(str)
+}
 
 func (game *Game) Upload() {
 	game.Lock()
@@ -446,14 +494,14 @@ func (character *Character) Migrate() {
 		}
 	}
 	if character.Items == nil {
-		character.Items = make([]*Item, NUM_ITEMS)
+		character.Items = make([]*Item, NUM_SLOTS)
 	}
 	character.AddItems()
 }
 
 func (character *Character) ItemLevel() int64 {
 	count := int64(0)
-	for i := 0; i < NUM_ITEMS; i++ {
+	for i := 0; i < NUM_SLOTS; i++ {
 		if character.Items[i] != nil {
 			count += character.Items[i].Level
 		}
@@ -463,35 +511,21 @@ func (character *Character) ItemLevel() int64 {
 
 func (character *Character) AddItems() {
 	for i := character.ItemLevel(); i < character.Level; i++ {
-		itemType := rand.Intn(NUM_ITEMS)
-		item := character.Items[itemType]
+		slot := rand.Intn(NUM_SLOTS)
+		item := character.Items[slot]
 		itemLevel := int64(1)
 		if item != nil {
 			itemLevel = item.Level + 1
 		}
-		character.Items[itemType] = NewItem(itemType, itemLevel)
+		character.Items[slot] = NewItem(slot, itemLevel)
 	}
-}
-
-func (item *Item) Color() string {
-	switch item.Type {
-	case ITEM_NORMAL:
-		return "rgb(0, 204, 0)"
-	case ITEM_MAGIC:
-		return "rgb(0, 0, 204)"
-	case ITEM_RARE:
-		return "rgb(132, 37, 201)"
-	case ITEM_UNIQUE:
-		return "rgb(255, 153, 0)"
-	}
-	return "rgb(0, 0, 0)"
 }
 
 func (character *Character) ItemList() template.HTML {
 	str := ""
 	for _, item := range character.Items {
 		if item != nil {
-			str += fmt.Sprintf("<span style=\"color: %v;\">%v</span> (%d), ", item.Color(), item.Name, item.Level)
+			str += fmt.Sprintf("<span class=\"item%d\">%v</span> (%d), ", item.Rarity, item.Name, item.Level)
 		}
 	}
 	if str == "" {
@@ -501,7 +535,7 @@ func (character *Character) ItemList() template.HTML {
 }
 
 func RandomItemName(slot int, level int64) (string, int) {
-	if slot == ITEM_WEAPON && level >= 10 && rand.Float64() > 0.95 {
+	if slot == SLOT_WEAPON && level >= 10 && rand.Float64() > 0.95 {
 		return Uniques[rand.Intn(len(Uniques))], ITEM_UNIQUE
 	}
 
@@ -510,9 +544,9 @@ func RandomItemName(slot int, level int64) (string, int) {
 
 	chance := int64(4)
 
-	itemtype := 0
+	rarity := 0
 	if level > 9 {
-		itemtype++
+		rarity++
 	}
 
 	prefix := rand.Float64() > 0.5
@@ -525,16 +559,16 @@ func RandomItemName(slot int, level int64) (string, int) {
 			}
 			level -= chance
 			prefix = !prefix
-			itemtype++
+			rarity++
 		}
 	}
 
-	return name, itemtype
+	return name, rarity
 }
 
 func NewItem(slot int, level int64) *Item {
-	name, itemtype := RandomItemName(slot, level)
-	return &Item{name, level, itemtype}
+	name, rarity := RandomItemName(slot, level)
+	return &Item{name, level, rarity}
 }
 
 func XPNeededForLevel(level int64) int64 {
@@ -563,7 +597,7 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 	key := NameKey(name)
 	character := game.Characters[key]
 	if character == nil && create {
-		character = &Character{Name: name, Items: make([]*Item, NUM_ITEMS)}
+		character = &Character{Name: name, Items: make([]*Item, NUM_SLOTS)}
 		game.Characters[key] = character
 	}
 	return character
@@ -641,16 +675,7 @@ func (game *Game) DefeatedReverse() Monsters {
 	return defeated
 }
 
-func lerpColor(ratio float64, colors []color.Color, ratios []float64) template.CSS {
-	color := lerp(ratio, colors, ratios)
-	if color == nil {
-		color = image.Black
-	}
-	r, g, b, _ := color.RGBA()
-	return template.CSS(fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8))
-}
-
-func (monster *Monster) HealthColor() template.CSS {
+func (monster *Monster) HealthPercentage() int {
 	health := monster.Health + monster.MaxHealth
 	if health < 0 {
 		health = 0
@@ -658,18 +683,18 @@ func (monster *Monster) HealthColor() template.CSS {
 	if health > monster.MaxHealth*2 {
 		health = monster.MaxHealth * 2
 	}
-	return lerpColor(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
+	return int((float64(health) / float64(monster.MaxHealth*2)) * 200.0)
 }
 
-func (monster *Monster) HealthStyle() template.CSS {
+func (monster *Monster) HealthBarPercentage() int {
 	health := monster.Health + monster.MaxHealth
 	if health < 0 {
 		health = 0
 	}
-	if health > monster.MaxHealth*2 {
-		health = monster.MaxHealth * 2
+	if health > monster.MaxHealth {
+		health = monster.MaxHealth
 	}
-	return StatusBarStyle(float64(health)/float64(monster.MaxHealth*2), HealthColors, HealthRatios)
+	return int((float64(health) / float64(monster.MaxHealth)) * 100.0)
 }
 
 // Following methods are for the template.
@@ -682,7 +707,7 @@ func (monster *Monster) CharacterList(game *Game) template.HTML {
 	}
 	str := ""
 	for name, c := range monster.Characters {
-		str += fmt.Sprintf("<span style=\"color: %s;\">%s</span>, ", lerpColor(float64(c)/float64(max), RaidColors, RaidRatios), game.GetCharacter(name, true).Name)
+		str += fmt.Sprintf("<span class=\"raid%d\">%s</span>, ", int((float64(c)/float64(max))*100), game.GetCharacter(name, true).Name)
 	}
 	if str == "" {
 		return template.HTML(str)
@@ -694,38 +719,31 @@ func (monster *Monster) SlayedList(game *Game) string {
 	return game.GetCharacter(monster.Slayed, true).Name
 }
 
-func StatusBarStyle(ratio float64, colors []color.Color, ratios []float64) template.CSS {
-	color := lerp(ratio, colors, ratios)
-	if color == nil {
-		color = image.Black
-	}
-	r, g, b, _ := color.RGBA()
-	p := func(bit string, color string, ratio float64) string {
-		return fmt.Sprintf("background-image: %s(left , %s 0%%, %s %.0f%%, rgba(0,0,0,0) %.0f%%, rgba(0, 0, 0, 0) 100%%);", bit, color, color, ratio, ratio)
-	}
-	cs := fmt.Sprintf("rgb(%d, %d, %d)", r>>8, g>>8, b>>8)
-	return template.CSS(p("linear-gradient", cs, ratio*100) + p("-o-linear-gradient", cs, ratio*100) + p("-moz-linear-gradient", cs, ratio*100) + p("-webkit-linear-gradient", cs, ratio*100) + p("-ms-linear-gradient", cs, ratio*100))
+func (character *Character) XPPercentage() int {
+	return int((float64(character.XP) / float64(XPNeededForLevel(character.Level))) * 100.0)
 }
 
-func (character *Character) XPStyle() template.CSS {
-	return StatusBarStyle(float64(character.XP)/float64(XPNeededForLevel(character.Level)), XPColors, XPRatios)
-}
-
-func (character *Character) LevelColor(game *Game) template.CSS {
+func (character *Character) LevelPercentage(game *Game) int {
 	max := int64(0)
 	for _, c := range game.Characters {
 		if c.Level > max {
 			max = c.Level
 		}
 	}
-	return lerpColor(float64(character.Level)/float64(max), LevelColors, LevelRatios)
+	return int((float64(character.Level) / float64(max)) * 100.0)
 }
 
 func (game *Game) Heal() {
+	game.Lock()
+	defer game.Unlock()
+
 	game.Monster.Heal(1)
 }
 
 func (game *Game) Attack(event *Event) {
+	game.Lock()
+	defer game.Unlock()
+
 	name := event.Line.Nick
 	key := NameKey(name)
 
