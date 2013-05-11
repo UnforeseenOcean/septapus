@@ -692,7 +692,7 @@ func (monster *Monster) HealthPercentage() int {
 }
 
 func (monster *Monster) HealthBarPercentage() int {
-	health := monster.Health + monster.MaxHealth
+	health := monster.Health
 	if health < 0 {
 		health = 0
 	}
