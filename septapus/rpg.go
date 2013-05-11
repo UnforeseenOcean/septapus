@@ -238,8 +238,13 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			fields := strings.Fields(event.Line.Text())
 			if event.Line.Target() == event.Line.Nick {
 				// Private message to us, must include a room
-				if len(fields) == 3 && fields[1] == string(room) {
-					char.Listening = fields[2] == "true"
+				if len(fields) >= 2 && fields[1] == string(room) {
+					if len(fields) == 3 {
+						char.Listening = fields[2] == "true"
+					}
+				} else {
+					// Don't send status update if message is targeting from the wrong room
+					break
 				}
 			} else {
 				if event.Room == room {
