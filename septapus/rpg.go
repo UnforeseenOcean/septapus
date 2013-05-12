@@ -230,9 +230,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			if !ok {
 				return
 			}
-			game.Lock()
 			char := game.GetCharacter(event.Line.Nick, false)
-			game.Unlock()
 			if char == nil {
 				break
 			}
@@ -241,9 +239,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 				// Private message to us, must include a room
 				if (len(fields) == 2 || len(fields) == 3) && fields[1] == string(room) {
 					if len(fields) == 3 {
-						game.Lock()
 						char.Listening = fields[2] == "true"
-						game.Unlock()
 					}
 				} else {
 					// Don't send status update if message is targeting from the wrong room
@@ -252,9 +248,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			} else {
 				if event.Room == room {
 					if len(fields) == 2 {
-						game.Lock()
 						char.Listening = fields[1] == "true"
-						game.Unlock()
 					}
 				} else {
 					// Don't send status update if message is coming from the wrong room
@@ -743,16 +737,10 @@ func (character *Character) LevelPercentage(game *Game) int {
 }
 
 func (game *Game) Heal() {
-	game.Lock()
-	defer game.Unlock()
-
 	game.Monster.Heal(1)
 }
 
 func (game *Game) Attack(event *Event) {
-	game.Lock()
-	defer game.Unlock()
-
 	name := event.Line.Nick
 	key := NameKey(name)
 
