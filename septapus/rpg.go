@@ -52,11 +52,13 @@ type Character struct {
 	Name      string
 	XP        int64
 	Level     int64
-	Items     []*Item
+	Items     Items
+	OldItems  Items
 	Listening bool
 }
 
 type Characters []*Character
+type Items []*Item
 
 func (c Characters) Len() int      { return len(c) }
 func (c Characters) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
@@ -75,6 +77,8 @@ type Monster struct {
 	Characters map[string]int64
 	Prefix     string
 	Slayed     string
+	Born       time.Time
+	Died       time.Time
 }
 
 type Monsters []*Monster
@@ -132,7 +136,7 @@ func init() {
 
 	ItemColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{0, 204, 0, 1}, color.RGBA{0, 0, 204, 1}, color.RGBA{132, 37, 201, 1}, color.RGBA{255, 153, 0, 1}}
 
-	Prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Engorging", "Poetic", "Frothing"}
+	Prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Poetic"}
 	Suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
 	Uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
 	ItemNames = [][]string{
@@ -497,7 +501,7 @@ func (character *Character) Migrate() {
 		}
 	}
 	if character.Items == nil {
-		character.Items = make([]*Item, NUM_SLOTS)
+		character.Items = make(Items, NUM_SLOTS)
 	}
 	character.AddItems()
 }
@@ -519,6 +523,9 @@ func (character *Character) AddItems() {
 		itemLevel := int64(1)
 		if item != nil {
 			itemLevel = item.Level + 1
+			if item.Rarity > ITEM_NORMAL {
+				character.OldItems = append(character.OldItems, item)
+			}
 		}
 		character.Items[slot] = NewItem(slot, itemLevel)
 	}
@@ -600,7 +607,7 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 	key := NameKey(name)
 	character := game.Characters[key]
 	if character == nil && create {
-		character = &Character{Name: name, Items: make([]*Item, NUM_SLOTS)}
+		character = &Character{Name: name, Items: make(Items, NUM_SLOTS)}
 		game.Characters[key] = character
 	}
 	return character
@@ -653,6 +660,7 @@ func (game *Game) NewMonster() *Monster {
 		Difficulty: difficulty,
 		Characters: make(map[string]int64),
 		Prefix:     prefix,
+		Born:       time.Now(),
 	}
 	return monster
 }
@@ -757,6 +765,7 @@ func (game *Game) Attack(event *Event) {
 	monster.Health -= int64(len(monster.Characters))
 	if monster.Health <= 0 {
 		monster.Slayed = key
+		monster.Died = time.Now()
 		xp := int64(float64(len(monster.Characters)) * monster.Difficulty)
 		if xp < 1 {
 			xp = 1
