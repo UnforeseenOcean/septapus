@@ -636,9 +636,9 @@ func (character *Character) Migrate() {
 		character.Items = make(Items, NUM_SLOTS)
 	}
 	character.AddItems()
-	//if character.Achievements == nil {
-	character.Achievements = make(AchievementsEarned)
-	//}
+	if character.Achievements == nil {
+		character.Achievements = make(AchievementsEarned)
+	}
 	character.stats = make(Stats)
 	character.stats[STAT_LEVEL] = character.Level
 	for _, item := range character.OldItems {
