@@ -35,7 +35,7 @@ const (
 )
 
 const (
-	ITEM_JUNK = iota
+	ITEM_JUNK int64 = iota
 	ITEM_NORMAL
 	ITEM_MAGIC
 	ITEM_RARE
@@ -45,16 +45,98 @@ const (
 type Item struct {
 	Name   string
 	Level  int64
-	Rarity int
+	Rarity int64
 }
 
 type Character struct {
-	Name      string
-	XP        int64
-	Level     int64
-	Items     Items
-	OldItems  Items
-	Listening bool
+	Name         string
+	XP           int64
+	Level        int64
+	Items        Items
+	OldItems     Items
+	Listening    bool
+	Achievements AchievementsEarned
+	stats        Stats
+}
+
+type Stat int64
+
+type Stats map[Stat]int64
+
+const (
+	STAT_LEVEL Stat = iota
+	STAT_DEFEATED
+	STAT_DEFEATED_LESS_THAN_10
+	STAT_SLAYED
+	STAT_RAID_SIZE
+	STAT_ITEM_RARITY
+)
+
+type Goal struct {
+	Stat   Stat
+	Target int64
+}
+type Goals []*Goal
+
+func NewGoal(stat Stat, target int64) *Goal {
+	return &Goal{stat, target}
+}
+
+func (goal *Goal) isSatisfied(stats Stats) bool {
+	return stats[goal.Stat] >= goal.Target
+}
+
+type AchievementID string
+type AchievementGroup string
+
+type Achievement struct {
+	ID          AchievementID
+	Group       AchievementGroup
+	Name        string
+	Description string
+	Goals       Goals
+}
+
+func NewAchievement(id AchievementID, group AchievementGroup, name, description string, goals ...*Goal) *Achievement {
+	achievement := &Achievement{
+		ID:          id,
+		Group:       group,
+		Name:        name,
+		Description: description,
+	}
+	for _, goal := range goals {
+		achievement.addGoal(goal)
+	}
+	return achievement
+}
+
+func (achievement *Achievement) isSatisfied(stats Stats) bool {
+	for _, goal := range achievement.Goals {
+		if !goal.isSatisfied(stats) {
+			return false
+		}
+	}
+	return true
+}
+
+func (achievement *Achievement) addGoal(goal *Goal) {
+	achievement.Goals = append(achievement.Goals, goal)
+}
+
+type Achievements []*Achievement
+type AchievementsEarned map[AchievementID]time.Time
+
+func (achievements *Achievements) check(stats Stats, achievementsEarned AchievementsEarned) {
+	for _, achievement := range *achievements {
+		if achievementsEarned[achievement.ID].IsZero() && achievement.isSatisfied(stats) {
+			achievementsEarned[achievement.ID] = time.Now()
+			fmt.Println("Earned Achievement", achievement.Name)
+		}
+	}
+}
+
+func (achievements *Achievements) add(achievement *Achievement) {
+	*achievements = append(*achievements, achievement)
 }
 
 type Characters []*Character
@@ -95,6 +177,7 @@ type Game struct {
 	Monster    *Monster
 	Defeated   Monsters
 	Last       string
+	counter    int
 }
 
 type RPGPlugin struct {
@@ -102,44 +185,46 @@ type RPGPlugin struct {
 }
 
 var (
-	MonsterNames  []string
-	MonsterSmall  []string
-	MonsterLarge  []string
-	MonsterUnique []string
+	monsterNames  []string
+	monsterSmall  []string
+	monsterLarge  []string
+	monsterUnique []string
 
-	HealthColors []color.Color
-	HealthRatios []float64
-	LevelColors  []color.Color
-	LevelRatios  []float64
-	RaidColors   []color.Color
-	RaidRatios   []float64
-	ItemColors   []color.Color
+	healthColors []color.Color
+	healthRatios []float64
+	levelColors  []color.Color
+	levelRatios  []float64
+	raidColors   []color.Color
+	raidRatios   []float64
+	itemColors   []color.Color
 
-	ItemNames [][]string
-	Prefixes  []string
-	Suffixes  []string
-	Uniques   []string
+	itemNames [][]string
+	prefixes  []string
+	suffixes  []string
+	uniques   []string
+
+	achievements Achievements
 )
 
 func init() {
-	MonsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
-	MonsterLarge = []string{"Large", "Giant", "Huge", "Epic", "King", "Champion", "Queen", "Master", "Lord"}
-	MonsterUnique = []string{"blood", "death", "rot", "sneeze", "pus", "spit", "puke", "burn", "shot", "rend", "slice", "maim"}
-	MonsterNames = []string{"Skeleton", "Zombie", "Slime", "Kobold", "Ant", "Cockatrice", "Pyrolisk", "Werewolf", "Wolf", "Warg", "Hell-hound", "Gas Spore", "Gremlin", "Gargoyle", "Mind Flayer", "Imp", "Mimic", "Nymph", "Goblin", "Orc", "Mastodon", "Kraken", "Spider", "Scorpion", "Unicorn", "Narwhal", "Narhorse", "Worm", "Angel", "Archon", "Bat", "Centaur", "Dragon", "Elemental", "Minotaur", "Lich", "Mummy", "Naga", "Ogre", "Snake", "Troll", "Ghoul", "Golem", "Doppelganger", "Ghost", "Shade", "Demon", "Pit Fiend", "Balrog"}
+	monsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
+	monsterLarge = []string{"Large", "Giant", "Huge", "Epic", "King", "Champion", "Queen", "Master", "Lord"}
+	monsterUnique = []string{"blood", "death", "rot", "sneeze", "pus", "spit", "puke", "burn", "shot", "rend", "slice", "maim"}
+	monsterNames = []string{"Skeleton", "Zombie", "Slime", "Kobold", "Ant", "Cockatrice", "Pyrolisk", "Werewolf", "Wolf", "Warg", "Hell-hound", "Gas Spore", "Gremlin", "Gargoyle", "Mind Flayer", "Imp", "Mimic", "Nymph", "Goblin", "Orc", "Mastodon", "Kraken", "Spider", "Scorpion", "Unicorn", "Narwhal", "Narhorse", "Worm", "Angel", "Archon", "Bat", "Centaur", "Dragon", "Elemental", "Minotaur", "Lich", "Mummy", "Naga", "Ogre", "Snake", "Troll", "Ghoul", "Golem", "Doppelganger", "Ghost", "Shade", "Demon", "Pit Fiend", "Balrog"}
 
-	HealthColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{153, 0, 0, 1}, color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
-	HealthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
-	LevelColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
-	LevelRatios = []float64{0, 1}
-	RaidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
-	RaidRatios = []float64{0, 1}
+	healthColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{153, 0, 0, 1}, color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
+	healthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
+	levelColors = []color.Color{color.RGBA{255, 204, 0, 1}, color.RGBA{255, 51, 0, 1}}
+	levelRatios = []float64{0, 1}
+	raidColors = []color.Color{color.RGBA{204, 204, 204, 1}, color.RGBA{153, 153, 153, 1}}
+	raidRatios = []float64{0, 1}
 
-	ItemColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{0, 204, 0, 1}, color.RGBA{0, 0, 204, 1}, color.RGBA{132, 37, 201, 1}, color.RGBA{255, 153, 0, 1}}
+	itemColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{0, 204, 0, 1}, color.RGBA{0, 0, 204, 1}, color.RGBA{132, 37, 201, 1}, color.RGBA{255, 153, 0, 1}}
 
-	Prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Poetic"}
-	Suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
-	Uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
-	ItemNames = [][]string{
+	prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Poetic"}
+	suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
+	uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
+	itemNames = [][]string{
 		//ITEM_WEAPON
 		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Scabbard", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
 		//ITEM_HEAD
@@ -147,6 +232,38 @@ func init() {
 		//ITEM_BODY
 		[]string{"Quilted Armor", "Leather Armor", "Hard Leather Armor", "Studded Leather Armor", "Ring Mail", "Scale Mail", "Chain Mail", "Splint Mail", "Light Plate", "Field Plate", "Plate Mail", "Full Plate Mail", "Mesh Armor", "Linked Mail"},
 	}
+
+	levelGroup := AchievementGroup("level")
+	achievements.add(NewAchievement(AchievementID("level1"), levelGroup, "Fresh Meat", "Reach level 1", NewGoal(STAT_LEVEL, 1)))
+	achievements.add(NewAchievement(AchievementID("level5"), levelGroup, "Rookie", "Reach level 5", NewGoal(STAT_LEVEL, 5)))
+	achievements.add(NewAchievement(AchievementID("level10"), levelGroup, "Veteran", "Reach level 10", NewGoal(STAT_LEVEL, 10)))
+	achievements.add(NewAchievement(AchievementID("level50"), levelGroup, "Hero", "Reach level 50", NewGoal(STAT_LEVEL, 50)))
+	achievements.add(NewAchievement(AchievementID("level100"), levelGroup, "God", "Reach level 100", NewGoal(STAT_LEVEL, 100)))
+	defeatedGroup := AchievementGroup("defeated")
+	achievements.add(NewAchievement(AchievementID("defeated1"), defeatedGroup, "Known in battle", "Defeat 1 monster", NewGoal(STAT_DEFEATED, 1)))
+	achievements.add(NewAchievement(AchievementID("defeated10"), defeatedGroup, "Dignified in battle", "Defeat 10 monsters", NewGoal(STAT_DEFEATED, 10)))
+	achievements.add(NewAchievement(AchievementID("defeated50"), defeatedGroup, "Honored in battle", "Defeat 50 monsters", NewGoal(STAT_DEFEATED, 50)))
+	achievements.add(NewAchievement(AchievementID("defeated100"), defeatedGroup, "Revered in battle", "Defeat 100 monsters", NewGoal(STAT_DEFEATED, 100)))
+	achievements.add(NewAchievement(AchievementID("defeated500"), defeatedGroup, "Exalted in battle", "Defeat 500 monsters", NewGoal(STAT_DEFEATED, 500)))
+	achievements.add(NewAchievement(AchievementID("defeated1000"), defeatedGroup, "Infamous in battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 1000)))
+	defeatedLessThan10Group := AchievementGroup("defeatedlessthan10")
+	achievements.add(NewAchievement(AchievementID("defeatedlessthan101"), defeatedLessThan10Group, "Fast", "Defeat a monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1)))
+	achievements.add(NewAchievement(AchievementID("defeatedlessthan10100"), defeatedLessThan10Group, "Quick", "Defeat a huge monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 100)))
+	achievements.add(NewAchievement(AchievementID("defeatedlessthan101000"), defeatedLessThan10Group, "Instant", "Defeat a gigantic monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1000)))
+	slayedGroup := AchievementGroup("slayed")
+	achievements.add(NewAchievement(AchievementID("slayed1"), slayedGroup, "Slaughter", "Slayed 1 monster", NewGoal(STAT_SLAYED, 1)))
+	achievements.add(NewAchievement(AchievementID("slayed5"), slayedGroup, "Massacre", "Slayed 10 monster", NewGoal(STAT_SLAYED, 10)))
+	achievements.add(NewAchievement(AchievementID("slayed50"), slayedGroup, "Bloodbath", "Slayed 50 monster", NewGoal(STAT_SLAYED, 50)))
+	raidSizeGroup := AchievementGroup("raidsize")
+	achievements.add(NewAchievement(AchievementID("raid5"), raidSizeGroup, "Crowd", "Defeat a monster in a raid of at least 5 people", NewGoal(STAT_RAID_SIZE, 5)))
+	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang Bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
+	achievements.add(NewAchievement(AchievementID("raid20"), raidSizeGroup, "Zerg Rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
+	itemRarityGroup := AchievementGroup("itemrarity")
+	achievements.add(NewAchievement(AchievementID("itemrarity0"), itemRarityGroup, "Junk", "Find an item", NewGoal(STAT_ITEM_RARITY, 0)))
+	achievements.add(NewAchievement(AchievementID("itemrarity1"), itemRarityGroup, "Special", "Find a special item", NewGoal(STAT_ITEM_RARITY, 1)))
+	achievements.add(NewAchievement(AchievementID("itemrarity2"), itemRarityGroup, "Magic", "Find a magic item", NewGoal(STAT_ITEM_RARITY, 2)))
+	achievements.add(NewAchievement(AchievementID("itemrarity3"), itemRarityGroup, "Rare", "Find a rare item", NewGoal(STAT_ITEM_RARITY, 3)))
+	achievements.add(NewAchievement(AchievementID("itemrarity4"), itemRarityGroup, "Legendary", "Find a legendary item", NewGoal(STAT_ITEM_RARITY, 4)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -310,6 +427,16 @@ func (game *Game) Save() {
 	}
 }
 
+func (game *Game) Counter() int {
+	game.counter++
+	return game.counter
+}
+
+func (game *Game) ResetCounter() string {
+	game.counter = 0
+	return ""
+}
+
 var gameTemplate = template.Must(template.New("root").Parse(gameTemplateSource))
 
 const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -320,8 +447,12 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<link rel="stylesheet" href="../css/septapus.css" type="text/css" media="screen">
 		<link rel="shortcut icon" href="../images/favicon.png">
 	</head>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
 	<style type="text/css">
 	{{.GenerateStyles}}
+	.moreinfo {
+		display: none;
+	}
 	</style>
 	<body>
 		<div class="title"><img src="../images/Septapus.png" alt="Septapus"></div>
@@ -338,8 +469,14 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<h2>Characters:</h2>
 		<table class="characters">
 			<tr><th>Name</th><th>Level</th><th>XP</th><th>Items</th></tr>
-			{{range .GetSortedCharacters}}
-			<tr><td class="name">{{.Name}}</td><td class="level level{{.LevelPercentage $}}">{{.Level}}</td><td class="xp bar{{.XPPercentage}}">{{.XP}}/{{.MaxXP}}</td><td class="items">{{.ItemList}}</td></tr>
+			{{range $index, $element := .GetSortedCharacters}}
+			<tr id="button{{$index}}"><td class="name">{{$element.Name}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
+			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}</td></tr>
+			<script type="text/javascript">
+				$("#button{{$index}}").click(function() {
+					$("#div{{$index}}").toggle();
+				});
+			</script>
 			{{end}}
 		</table>
 		{{end}}
@@ -410,16 +547,16 @@ func barColor(ratio float64, colorratio float64, colors []color.Color, ratios []
 func (game *Game) GenerateStyles() template.CSS {
 	str := ""
 	for i := 0; i <= 200; i++ {
-		str += fmt.Sprintf(".health%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(200), HealthColors, HealthRatios))
+		str += fmt.Sprintf(".health%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(200), healthColors, healthRatios))
 	}
 	for i := 0; i <= 100; i++ {
-		str += fmt.Sprintf(".raid%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), RaidColors, RaidRatios))
-		str += fmt.Sprintf(".level%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), LevelColors, LevelRatios))
+		str += fmt.Sprintf(".raid%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), raidColors, raidRatios))
+		str += fmt.Sprintf(".level%d { color: %v; }\n", i, lerpColorString(float64(i)/float64(100), levelColors, levelRatios))
 		barRatio := float64(i) / float64(100)
-		str += fmt.Sprintf(".bar%d { %v }\n", i, barColor(barRatio, 0.5+barRatio/2.0, HealthColors, HealthRatios))
+		str += fmt.Sprintf(".bar%d { %v }\n", i, barColor(barRatio, 0.5+barRatio/2.0, healthColors, healthRatios))
 	}
-	for i := 0; i < len(ItemColors); i++ {
-		str += fmt.Sprintf(".item%d { color: %v; }\n", i, colorString(ItemColors[i]))
+	for i := 0; i < len(itemColors); i++ {
+		str += fmt.Sprintf(".item%d { color: %v; }\n", i, colorString(itemColors[i]))
 	}
 	return template.CSS(str)
 }
@@ -485,6 +622,13 @@ func (game *Game) Init(server ServerName, room RoomName) {
 	if game.Defeated == nil {
 		game.Defeated = make(Monsters, 0)
 	}
+	// Construct achievement stat
+	for _, character := range game.Characters {
+		for _, monster := range game.Defeated {
+			monster.assignStats(character)
+		}
+		achievements.check(character.stats, character.Achievements)
+	}
 }
 
 func NameKey(name string) string {
@@ -504,6 +648,23 @@ func (character *Character) Migrate() {
 		character.Items = make(Items, NUM_SLOTS)
 	}
 	character.AddItems()
+	//if character.Achievements == nil {
+	character.Achievements = make(AchievementsEarned)
+	//}
+	character.stats = make(Stats)
+	character.stats[STAT_LEVEL] = character.Level
+	for _, item := range character.OldItems {
+		if item.Rarity > character.stats[STAT_ITEM_RARITY] {
+			character.stats[STAT_ITEM_RARITY] = item.Rarity
+		}
+	}
+	for _, item := range character.Items {
+		if item != nil {
+			if item.Rarity > character.stats[STAT_ITEM_RARITY] {
+				character.stats[STAT_ITEM_RARITY] = item.Rarity
+			}
+		}
+	}
 }
 
 func (character *Character) ItemLevel() int64 {
@@ -528,12 +689,16 @@ func (character *Character) AddItems() {
 			}
 		}
 		character.Items[slot] = NewItem(slot, itemLevel)
+		if item.Rarity > character.stats[STAT_ITEM_RARITY] {
+			character.stats[STAT_ITEM_RARITY] = item.Rarity
+		}
+
 	}
 }
 
-func (character *Character) ItemList() template.HTML {
+func itemList(items Items) template.HTML {
 	str := ""
-	for _, item := range character.Items {
+	for _, item := range items {
 		if item != nil {
 			str += fmt.Sprintf("<span class=\"item%d\">%v</span> (%d), ", item.Rarity, item.Name, item.Level)
 		}
@@ -544,17 +709,25 @@ func (character *Character) ItemList() template.HTML {
 	return template.HTML(str[:len(str)-2])
 }
 
-func RandomItemName(slot int, level int64) (string, int) {
+func (character *Character) ItemsList() template.HTML {
+	return itemList(character.Items)
+}
+
+func (character *Character) OldItemsList() template.HTML {
+	return itemList(character.OldItems)
+}
+
+func RandomItemName(slot int, level int64) (string, int64) {
 	if slot == SLOT_WEAPON && level >= 10 && rand.Float64() > 0.95 {
-		return Uniques[rand.Intn(len(Uniques))], ITEM_UNIQUE
+		return uniques[rand.Intn(len(uniques))], ITEM_UNIQUE
 	}
 
-	names := ItemNames[slot]
+	names := itemNames[slot]
 	name := names[rand.Intn(len(names))]
 
 	chance := int64(4)
 
-	rarity := 0
+	rarity := int64(0)
 	if level > 9 {
 		rarity++
 	}
@@ -563,9 +736,9 @@ func RandomItemName(slot int, level int64) (string, int) {
 	for i := 0; i < 2; i++ {
 		if rand.Float64() < float64(level-chance)/float64(chance) {
 			if prefix {
-				name = Prefixes[rand.Intn(len(Prefixes))] + " " + name
+				name = prefixes[rand.Intn(len(prefixes))] + " " + name
 			} else {
-				name = name + " of " + Suffixes[rand.Intn(len(Suffixes))]
+				name = name + " of " + suffixes[rand.Intn(len(suffixes))]
 			}
 			level -= chance
 			prefix = !prefix
@@ -607,7 +780,12 @@ func (game *Game) GetCharacter(name string, create bool) *Character {
 	key := NameKey(name)
 	character := game.Characters[key]
 	if character == nil && create {
-		character = &Character{Name: name, Items: make(Items, NUM_SLOTS)}
+		character = &Character{
+			Name:         name,
+			Items:        make(Items, NUM_SLOTS),
+			stats:        make(Stats),
+			Achievements: make(AchievementsEarned),
+		}
 		game.Characters[key] = character
 	}
 	return character
@@ -625,24 +803,24 @@ func (game *Game) GetSortedCharacters() Characters {
 func (game *Game) NewMonster() *Monster {
 	health := int64(len(game.Defeated))
 	difficulty := 1.0
-	name := MonsterNames[rand.Intn(len(MonsterNames))]
+	name := monsterNames[rand.Intn(len(monsterNames))]
 	prefix := "a"
 	r := rand.Float64()
 	if r > 0.95 {
 		difficulty += rand.Float64() * 2
-		first := MonsterUnique[rand.Intn(len(MonsterUnique))]
+		first := monsterUnique[rand.Intn(len(monsterUnique))]
 		second := ""
 		for second == "" || second == first {
-			second = MonsterUnique[rand.Intn(len(MonsterUnique))]
+			second = monsterUnique[rand.Intn(len(monsterUnique))]
 		}
 		name = strings.ToUpper(string(first[0])) + first[1:] + second
 		prefix = ""
 	} else if r > 0.75 {
 		difficulty += rand.Float64()
-		name = MonsterLarge[rand.Intn(len(MonsterLarge))] + " " + name
+		name = monsterLarge[rand.Intn(len(monsterLarge))] + " " + name
 	} else if r > 0.5 {
 		difficulty -= rand.Float64() / 2.0
-		name = MonsterSmall[rand.Intn(len(MonsterSmall))] + " " + name
+		name = monsterSmall[rand.Intn(len(monsterSmall))] + " " + name
 	}
 	health = int64(float64(health) * difficulty)
 	if health < 1 {
@@ -744,8 +922,51 @@ func (character *Character) LevelPercentage(game *Game) int {
 	return int((float64(character.Level) / float64(max)) * 100.0)
 }
 
+func (character *Character) AchievementsList() template.HTML {
+	str := ""
+
+	var lastGroup AchievementGroup
+	shownNext := false
+	for _, achievement := range achievements {
+		if achievement.Group != lastGroup {
+			if len(str) != 0 {
+				str += "<p>"
+			}
+			lastGroup = achievement.Group
+			shownNext = false
+		}
+		time := character.Achievements[achievement.ID]
+		if !time.IsZero() {
+			str += fmt.Sprintf("<div class=\"achievement earned\"><span class=\"name earned\">%v</span><br><span class=\"date earned\">Earned %v</span><br><span class=\"description earned\">%v</span></div>", achievement.Name, time.Format("02 Jan 2006"), achievement.Description)
+		} else if !shownNext {
+			str += fmt.Sprintf("<div class=\"achievement unearned\"><span class=\"name unearned\">%v</span><br><span class=\"date unearned\">Not earned</span><br><span class=\"description unearned\">%v</span></div>", achievement.Name, achievement.Description)
+			shownNext = true
+		}
+	}
+
+	return template.HTML(str)
+}
+
 func (game *Game) Heal() {
 	game.Monster.Heal(1)
+}
+
+func (monster *Monster) assignStats(character *Character) {
+	key := NameKey(character.Name)
+	stats := character.stats
+	if key == monster.Slayed {
+		stats[STAT_SLAYED]++
+	}
+	if _, ok := monster.Characters[key]; ok {
+		stats[STAT_DEFEATED]++
+	}
+	if !monster.Born.IsZero() && !monster.Died.IsZero() && monster.Died.Before(monster.Born.Add(10*time.Minute)) {
+		stats[STAT_DEFEATED_LESS_THAN_10] = monster.MaxHealth
+	}
+	raidSize := int64(len(monster.Characters))
+	if raidSize > stats[STAT_RAID_SIZE] {
+		stats[STAT_RAID_SIZE] = raidSize
+	}
 }
 
 func (game *Game) Attack(event *Event) {
@@ -777,6 +998,8 @@ func (game *Game) Attack(event *Event) {
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
 			levelled := char.GainXP(xp)
+			monster.assignStats(char)
+			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
 				if n == key {
 					event.Server.Conn.Privmsg(name, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
