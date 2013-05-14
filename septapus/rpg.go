@@ -130,7 +130,6 @@ func (achievements *Achievements) check(stats Stats, achievementsEarned Achievem
 	for _, achievement := range *achievements {
 		if achievementsEarned[achievement.ID].IsZero() && achievement.isSatisfied(stats) {
 			achievementsEarned[achievement.ID] = time.Now()
-			fmt.Println("Earned Achievement", achievement.Name)
 		}
 	}
 }
@@ -259,11 +258,11 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang Bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
 	achievements.add(NewAchievement(AchievementID("raid20"), raidSizeGroup, "Zerg Rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
 	itemRarityGroup := AchievementGroup("itemrarity")
-	achievements.add(NewAchievement(AchievementID("itemrarity0"), itemRarityGroup, "Junk", "Find an item", NewGoal(STAT_ITEM_RARITY, 0)))
-	achievements.add(NewAchievement(AchievementID("itemrarity1"), itemRarityGroup, "Special", "Find a special item", NewGoal(STAT_ITEM_RARITY, 1)))
-	achievements.add(NewAchievement(AchievementID("itemrarity2"), itemRarityGroup, "Magic", "Find a magic item", NewGoal(STAT_ITEM_RARITY, 2)))
-	achievements.add(NewAchievement(AchievementID("itemrarity3"), itemRarityGroup, "Rare", "Find a rare item", NewGoal(STAT_ITEM_RARITY, 3)))
-	achievements.add(NewAchievement(AchievementID("itemrarity4"), itemRarityGroup, "Legendary", "Find a legendary item", NewGoal(STAT_ITEM_RARITY, 4)))
+	achievements.add(NewAchievement(AchievementID("itemrarity0"), itemRarityGroup, "Junk", "Find an item", NewGoal(STAT_ITEM_RARITY, 1)))
+	achievements.add(NewAchievement(AchievementID("itemrarity1"), itemRarityGroup, "Special", "Find a special item", NewGoal(STAT_ITEM_RARITY, 2)))
+	achievements.add(NewAchievement(AchievementID("itemrarity2"), itemRarityGroup, "Magic", "Find a magic item", NewGoal(STAT_ITEM_RARITY, 3)))
+	achievements.add(NewAchievement(AchievementID("itemrarity3"), itemRarityGroup, "Rare", "Find a rare item", NewGoal(STAT_ITEM_RARITY, 4)))
+	achievements.add(NewAchievement(AchievementID("itemrarity4"), itemRarityGroup, "Legendary", "Find a legendary item", NewGoal(STAT_ITEM_RARITY, 5)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -654,14 +653,14 @@ func (character *Character) Migrate() {
 	character.stats = make(Stats)
 	character.stats[STAT_LEVEL] = character.Level
 	for _, item := range character.OldItems {
-		if item.Rarity > character.stats[STAT_ITEM_RARITY] {
-			character.stats[STAT_ITEM_RARITY] = item.Rarity
+		if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
+			character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 		}
 	}
 	for _, item := range character.Items {
 		if item != nil {
-			if item.Rarity > character.stats[STAT_ITEM_RARITY] {
-				character.stats[STAT_ITEM_RARITY] = item.Rarity
+			if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
+				character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 			}
 		}
 	}
@@ -684,13 +683,13 @@ func (character *Character) AddItems() {
 		itemLevel := int64(1)
 		if item != nil {
 			itemLevel = item.Level + 1
-			if item.Rarity > ITEM_NORMAL {
+			if item.Rarity >= ITEM_NORMAL {
 				character.OldItems = append(character.OldItems, item)
 			}
 		}
 		character.Items[slot] = NewItem(slot, itemLevel)
-		if item.Rarity > character.stats[STAT_ITEM_RARITY] {
-			character.stats[STAT_ITEM_RARITY] = item.Rarity
+		if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
+			character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 		}
 
 	}
