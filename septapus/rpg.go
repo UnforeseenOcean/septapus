@@ -176,7 +176,6 @@ type Game struct {
 	Monster    *Monster
 	Defeated   Monsters
 	Last       string
-	counter    int
 }
 
 type RPGPlugin struct {
@@ -424,16 +423,6 @@ func (game *Game) Save() {
 	} else {
 		logging.Info("Error creating file", game.Server, game.Room, filename, err)
 	}
-}
-
-func (game *Game) Counter() int {
-	game.counter++
-	return game.counter
-}
-
-func (game *Game) ResetCounter() string {
-	game.counter = 0
-	return ""
 }
 
 var gameTemplate = template.Must(template.New("root").Parse(gameTemplateSource))
