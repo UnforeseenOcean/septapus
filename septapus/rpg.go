@@ -676,7 +676,8 @@ func (character *Character) AddItems() {
 				character.OldItems = append(character.OldItems, item)
 			}
 		}
-		character.Items[slot] = NewItem(slot, itemLevel)
+		item = NewItem(slot, itemLevel)
+		character.Items[slot] = item
 		if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
 			character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 		}
