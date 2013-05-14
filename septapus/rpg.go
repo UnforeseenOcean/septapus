@@ -952,13 +952,14 @@ func (game *Game) Heal() {
 
 func (monster *Monster) assignStats(character *Character) {
 	key := NameKey(character.Name)
+	if _, ok := monster.Characters[key]; !ok {
+		return
+	}
 	stats := character.stats
 	if key == monster.Slayed {
 		stats[STAT_SLAYED]++
 	}
-	if _, ok := monster.Characters[key]; ok {
-		stats[STAT_DEFEATED]++
-	}
+	stats[STAT_DEFEATED]++
 	if !monster.Born.IsZero() && !monster.Died.IsZero() && monster.Died.Before(monster.Born.Add(10*time.Minute)) {
 		stats[STAT_DEFEATED_LESS_THAN_10] = monster.MaxHealth
 	}
