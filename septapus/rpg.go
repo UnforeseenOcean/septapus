@@ -991,12 +991,12 @@ func (game *Game) Attack(event *Event) {
 			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
 				if n == key {
-					event.Server.Conn.Privmsg(name, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
 				} else {
-					event.Server.Conn.Privmsg(name, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
 				}
 				if levelled {
-					event.Server.Conn.Privmsg(name, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
 				}
 			}
 
