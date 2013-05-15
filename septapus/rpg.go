@@ -1097,5 +1097,7 @@ func (game *Game) Attack(event *Event) {
 		game.Unlock()
 		game.Save()
 		game.Upload()
+	} else {
+		game.Unlock()
 	}
 }
