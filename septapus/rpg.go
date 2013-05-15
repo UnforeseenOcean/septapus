@@ -70,6 +70,9 @@ const (
 	STAT_SLAYED
 	STAT_RAID_SIZE
 	STAT_ITEM_RARITY
+	STAT_SMALL_DEFEATED
+	STAT_UNIQUE_DEFEATED
+	STAT_DKP
 )
 
 type Goal struct {
@@ -201,6 +204,9 @@ var (
 	suffixes  []string
 	uniques   []string
 
+	bannedItemNames [][]string
+	bannedPrefixes  []string
+
 	achievements Achievements
 )
 
@@ -219,20 +225,27 @@ func init() {
 
 	itemColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{0, 204, 0, 1}, color.RGBA{0, 0, 204, 1}, color.RGBA{132, 37, 201, 1}, color.RGBA{255, 153, 0, 1}}
 
-	prefixes = []string{"Iron", "Wooden", "Plastic", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Paper", "Cracked", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Poetic"}
+	prefixes = []string{"Iron", "Wooden", "Bronze", "Tin", "Golden", "Silver", "Platinum", "Titanium", "Irradiated", "Liquid", "Steel", "Chilling", "Icey", "Fiery", "Frozen", "Poisoned", "Toxic", "Concrete", "Slippery", "Metal", "Pointy", "Blunt", "Broken", "Fragile", "Huge", "Massive", "Chrome", "Glass", "Transparent", "Black", "Universal", "Sticky", "Heavy", "Epic", "Eternal", "Ethereal", "Stainless", "Radiant", "Gleaming", "Smoldering", "Charged", "Static", "Roaring", "Talking", "Singing", "Imaginary", "Quintissential", "Glowing", "Raging", "Acrobat's", "Amber", "Angel's", "Archangel's", "Arching", "Arcadian", "Artisan's", "Astral", "Azure", "Beserker", "Beryl", "Blazing", "Blessed", "Blighting", "Boreal", "Brutal", "Burgundy", "Buzzing", "Celestial", "Chromatic", "Cobalt", "Condensing", "Consecrated", "Coral", "Corrosive", "Crimson", "Cruel", "Cunning", "Deadly", "Dense", "Devious", "Divine", "Echoing", "Elysian", "Emerald", "Faithful", "Fanatic", "Feral", "Ferocious", "Fine", "Flaming", "Foul", "Freezing", "Furious", "Garnet", "Glacial", "Glimmering", "Glorious", "Great Wyrm's", "Grinding", "Guardian's", "Dark", "Hallowed", "Hexing", "Hibernal", "Holy", "Howling", "Jade", "Jagged", "King's", "Knight's", "Lapis", "Lord's", "Lunar", "Master's", "Mercilless", "Meteoric", "Mnemonic", "Noxious", "Ocher", "Pestilent", "Prismatic", "Psychic", "Pure", "Resonant", "Ruby", "Rugged", "Russet", "Sacred", "Sapphire", "Savage", "Septic", "Serpent's", "Shadow", "Sharp", "Shimmering", "Shocking", "Soldier's", "Strong", "Sturdy", "Tireless", "Triumphant", "Unearthly", "Valkyrie's", "Venomous", "Veteran's", "Vicious", "Victorious", "Vigorous", "Viridian", "Volcanic", "Wailing", "Warrior's", "Wyrm's", "Quality", "Poetic"}
 	suffixes = []string{"Maiming", "Destruction", "Brutality", "Crushing", "Fire", "Lava", "Ice", "Poison", "Pestilence", "Death", "Deliverance", "Chastity", "Rock", "Metal", "Death", "Damnation", "Strength", "Skill", "Dismemberment", "Spines", "the Whale", "the Bear", "Thunder", "Lightning", "the Owl", "the Shark", "the Moon", "the Sun", "the Cosmos", "the Elephant", "the Tiger", "the Snake", "Suffering", "Rainbows", "Reversal", "Eternity", "Rending", "the Idol", "the Narhorse", "the Narwhal", "the Dolphin", "the Ages", "Alacrity", "the Atlas", "Balance", "Bashing", "the Bat", "Blight", "Blocking", "Brilliance", "Burning", "Butchery", "Carnage", "the Centaur", "Chance", "the Kraken", "the Colossus", "Craftmanship", "Defiance", "Ease", "Energy", "Enlightenment", "Equilibrium", "Evisceration", "Excellence", "Flame", "Fortune", "the Fox", "Frost", "the Gargantuan", "the Giant", "the Glacier", "Gore", "Greed", "Guarding", "Incineration", "the Jackal", "the Lamprey", "the Leech", "Life", "the Locust", "Luck", "the Magus", "the Mammoth", "Might", "the Mind", "the Ox", "Pacing", "Perfection", "Radiance", "Protection", "Regeneration", "the Sentinel", "Speed", "Slaying", "Spikes", "the Squid", "Stability", "Storms", "Thawing", "Thorns", "the Titan", "Transcendence", "the Vampire", "the Wolf", "Venom", "Warding", "Vileness", "Winter", "the Wraith", "Benevolence", "Malevolence", "Justice"}
 	uniques = []string{"Eagles Mane", "Dragontaint", "Abortious", "Jessicer", "Torsionrod", "Brainpan", "Hell's Wrath", "Furious Expulsion", "Clutterspork", "Bekludgeon", "Bloodwood", "Frostmourne", "Doombringer", "Hyperion", "The Redeemer", "Blood Fell", "Reaper's Toll", "Stormwrath", "Widowmaker", "Fleshtaster", "Ghostwail", "Bloodcrust", "Plaguesnot", "Mindender", "Fungal Growth", "Earth's Edge", "Zealbringer", "Soul's Blessing", "Ripjaw", "The Patriarch", "Silencer", "Battletorrent", "Angel's Song", "Rustwarden"}
 	itemNames = [][]string{
 		//ITEM_WEAPON
-		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Scabbard", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
+		[]string{"Sword", "Axe", "Broadsword", "Two Handed Sword", "Pike", "Knife", "Dagger", "Polearm", "Mace", "Mallet", "Whip", "Longsword", "Battle Axe", "Two Handed Axe", "Blade", "Glaive", "Club", "Morning Star", "Flail", "War Hammer", "Maul", "Great Maul", "Scythe", "Poleaxe", "Halberd", "Scepter", "Staff", "Spear", "Trident", "Short Sword", "Scimitar", "Sabre", "Claymore", "Bastard Sword", "Cestus"},
 		//ITEM_HEAD
 		[]string{"Cap", "Skull Cap", "Helm", "Full Helm", "Great Helm", "Mask", "Crown", "Bone Helm", "Circlet", "Coronet", "Diadem", "Casque", "Armet"},
 		//ITEM_BODY
 		[]string{"Quilted Armor", "Leather Armor", "Hard Leather Armor", "Studded Leather Armor", "Ring Mail", "Scale Mail", "Chain Mail", "Splint Mail", "Light Plate", "Field Plate", "Plate Mail", "Full Plate Mail", "Mesh Armor", "Linked Mail"},
 	}
 
+	bannedPrefixes = []string{"Plastic", "Paper", "Cracked"}
+	bannedItemNames = [][]string{
+		[]string{"Scabbard"},
+		[]string{},
+		[]string{},
+	}
+
 	levelGroup := AchievementGroup("level")
-	achievements.add(NewAchievement(AchievementID("level1"), levelGroup, "Fresh Meat", "Reach level 1", NewGoal(STAT_LEVEL, 1)))
+	achievements.add(NewAchievement(AchievementID("level1"), levelGroup, "Fresh meat", "Reach level 1", NewGoal(STAT_LEVEL, 1)))
 	achievements.add(NewAchievement(AchievementID("level5"), levelGroup, "Rookie", "Reach level 5", NewGoal(STAT_LEVEL, 5)))
 	achievements.add(NewAchievement(AchievementID("level10"), levelGroup, "Veteran", "Reach level 10", NewGoal(STAT_LEVEL, 10)))
 	achievements.add(NewAchievement(AchievementID("level50"), levelGroup, "Hero", "Reach level 50", NewGoal(STAT_LEVEL, 50)))
@@ -244,24 +257,32 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("defeated100"), defeatedGroup, "Revered in battle", "Defeat 100 monsters", NewGoal(STAT_DEFEATED, 100)))
 	achievements.add(NewAchievement(AchievementID("defeated500"), defeatedGroup, "Exalted in battle", "Defeat 500 monsters", NewGoal(STAT_DEFEATED, 500)))
 	achievements.add(NewAchievement(AchievementID("defeated1000"), defeatedGroup, "Infamous in battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 1000)))
+	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Beyond battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 10000)))
 	defeatedLessThan10Group := AchievementGroup("defeatedlessthan10")
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan101"), defeatedLessThan10Group, "Fast", "Defeat a monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1)))
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan10100"), defeatedLessThan10Group, "Quick", "Defeat a huge monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 100)))
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan101000"), defeatedLessThan10Group, "Instant", "Defeat a gigantic monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1000)))
 	slayedGroup := AchievementGroup("slayed")
 	achievements.add(NewAchievement(AchievementID("slayed1"), slayedGroup, "Slaughter", "Slayed 1 monster", NewGoal(STAT_SLAYED, 1)))
-	achievements.add(NewAchievement(AchievementID("slayed5"), slayedGroup, "Massacre", "Slayed 10 monster", NewGoal(STAT_SLAYED, 10)))
-	achievements.add(NewAchievement(AchievementID("slayed50"), slayedGroup, "Bloodbath", "Slayed 50 monster", NewGoal(STAT_SLAYED, 50)))
+	achievements.add(NewAchievement(AchievementID("slayed5"), slayedGroup, "Massacre", "Slayed 10 monsters", NewGoal(STAT_SLAYED, 10)))
+	achievements.add(NewAchievement(AchievementID("slayed50"), slayedGroup, "Bloodbath", "Slayed 50 monsters", NewGoal(STAT_SLAYED, 50)))
+	achievements.add(NewAchievement(AchievementID("slayed100"), slayedGroup, "Eradication", "Slayed 100 monsters", NewGoal(STAT_SLAYED, 100)))
 	raidSizeGroup := AchievementGroup("raidsize")
 	achievements.add(NewAchievement(AchievementID("raid5"), raidSizeGroup, "Crowd", "Defeat a monster in a raid of at least 5 people", NewGoal(STAT_RAID_SIZE, 5)))
-	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang Bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
-	achievements.add(NewAchievement(AchievementID("raid20"), raidSizeGroup, "Zerg Rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
+	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
+	achievements.add(NewAchievement(AchievementID("raid20"), raidSizeGroup, "Zerg rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
 	itemRarityGroup := AchievementGroup("itemrarity")
 	achievements.add(NewAchievement(AchievementID("itemrarity0"), itemRarityGroup, "Junk", "Find an item", NewGoal(STAT_ITEM_RARITY, 1)))
 	achievements.add(NewAchievement(AchievementID("itemrarity1"), itemRarityGroup, "Special", "Find a special item", NewGoal(STAT_ITEM_RARITY, 2)))
 	achievements.add(NewAchievement(AchievementID("itemrarity2"), itemRarityGroup, "Magic", "Find a magic item", NewGoal(STAT_ITEM_RARITY, 3)))
 	achievements.add(NewAchievement(AchievementID("itemrarity3"), itemRarityGroup, "Rare", "Find a rare item", NewGoal(STAT_ITEM_RARITY, 4)))
 	achievements.add(NewAchievement(AchievementID("itemrarity4"), itemRarityGroup, "Legendary", "Find a legendary item", NewGoal(STAT_ITEM_RARITY, 5)))
+	sizeRarityGroup := AchievementGroup("size")
+	achievements.add(NewAchievement(AchievementID("sizesmall"), sizeRarityGroup, "Candy from a baby", "Defeat a small monster", NewGoal(STAT_SMALL_DEFEATED, 1)))
+	achievements.add(NewAchievement(AchievementID("sizeunique"), sizeRarityGroup, "Pulling teeth", "Defeat a unique monster", NewGoal(STAT_UNIQUE_DEFEATED, 1)))
+	dkpRarityGroup := AchievementGroup("dkp")
+	achievements.add(NewAchievement(AchievementID("dkp1"), dkpRarityGroup, "Dragonslayer", "Defeat a dragon", NewGoal(STAT_DKP, 1)))
+	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "Lord of the dragon", "Defeat 100 dragons", NewGoal(STAT_DKP, 100)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -458,13 +479,8 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<table class="characters">
 			<tr><th>Name</th><th>Level</th><th>XP</th><th>Items</th></tr>
 			{{range $index, $element := .GetSortedCharacters}}
-			<tr id="button{{$index}}"><td class="name">{{$element.Name}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
-			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}</td></tr>
-			<script type="text/javascript">
-				$("#button{{$index}}").click(function() {
-					$("#div{{$index}}").toggle();
-				});
-			</script>
+			<tr id="button{{$index}}" class="moreinfobutton"><td class="name">{{$element.NameStyle false}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
+			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
 			{{end}}
 		</table>
 		{{end}}
@@ -478,6 +494,20 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			{{end}}
 		</table>
 		{{end}}
+		<script type="text/javascript">
+			$(".moreinfobutton").each(function(index) {
+				var id = $(this).attr('id');
+				id = "div" + id.substring(6)
+			  $(this).click(function() {
+			  	$(".moreinfo").each(function(index) {
+						if ($(this).attr("id") != id) {
+							$(this).hide();
+						}
+					});
+			  	$("#" + id).toggle();
+			  });
+			});
+		</script>
 		<p>
 			<a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-html401" alt="Valid HTML 4.01 Strict" height="31" width="88"></a>
 		</p>
@@ -642,17 +672,33 @@ func (character *Character) Migrate() {
 	character.stats = make(Stats)
 	character.stats[STAT_LEVEL] = character.Level
 	for _, item := range character.OldItems {
+		item.Migrate()
 		if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
 			character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 		}
 	}
 	for _, item := range character.Items {
 		if item != nil {
+			item.Migrate()
 			if item.Rarity+1 > character.stats[STAT_ITEM_RARITY] {
 				character.stats[STAT_ITEM_RARITY] = item.Rarity + 1
 			}
 		}
 	}
+}
+
+func (item *Item) Migrate() {
+	name := item.Name
+	for _, str := range bannedPrefixes {
+		name = strings.Replace(name, str, prefixes[rand.Intn(len(prefixes))], -1)
+	}
+	for i, _ := range bannedItemNames {
+		names := bannedItemNames[i]
+		for _, str := range names {
+			name = strings.Replace(name, str, names[rand.Intn(len(names))], -1)
+		}
+	}
+	item.Name = name
 }
 
 func (character *Character) ItemLevel() int64 {
@@ -796,7 +842,7 @@ func (game *Game) NewMonster() *Monster {
 	prefix := "a"
 	r := rand.Float64()
 	if r > 0.95 {
-		difficulty += rand.Float64() * 2
+		difficulty += 1 + rand.Float64()
 		first := monsterUnique[rand.Intn(len(monsterUnique))]
 		second := ""
 		for second == "" || second == first {
@@ -911,6 +957,23 @@ func (character *Character) LevelPercentage(game *Game) int {
 	return int((float64(character.Level) / float64(max)) * 100.0)
 }
 
+func (character *Character) NameStyle(includeTitle bool) template.HTML {
+	name := character.Name
+	prefix := ""
+	title := ""
+	if !character.Achievements["dkp100"].IsZero() {
+		title = "<span class=\"raid100\">, Lord of the Dragon</span>"
+		prefix = "<span class=\"level100\">♛</span>"
+	} else if !character.Achievements["dkp1"].IsZero() {
+		title = "<span class=\"raid100\"> the Dragonslayer</span>"
+		prefix = "<span class=\"level0\">♛</span>"
+	}
+	if includeTitle {
+		return template.HTML(fmt.Sprintf("%v%v%v", prefix, name, title))
+	}
+	return template.HTML(fmt.Sprintf("%v%v", prefix, name))
+}
+
 func (character *Character) AchievementsList() template.HTML {
 	str := ""
 
@@ -948,6 +1011,9 @@ func (monster *Monster) assignStats(character *Character) {
 	stats := character.stats
 	if key == monster.Slayed {
 		stats[STAT_SLAYED]++
+		if strings.Index(monster.Name, "Dragon") != -1 {
+			stats[STAT_DKP]++
+		}
 	}
 	stats[STAT_DEFEATED]++
 	if !monster.Born.IsZero() && !monster.Died.IsZero() && monster.Died.Before(monster.Born.Add(10*time.Minute)) {
@@ -957,9 +1023,18 @@ func (monster *Monster) assignStats(character *Character) {
 	if raidSize > stats[STAT_RAID_SIZE] {
 		stats[STAT_RAID_SIZE] = raidSize
 	}
+	difficulty := int64(monster.Difficulty)
+
+	switch difficulty {
+	case 0:
+		stats[STAT_SMALL_DEFEATED]++
+	case 2:
+		stats[STAT_UNIQUE_DEFEATED]++
+	}
 }
 
 func (game *Game) Attack(event *Event) {
+	game.Lock()
 	name := event.Line.Nick
 	key := NameKey(name)
 
@@ -968,6 +1043,7 @@ func (game *Game) Attack(event *Event) {
 	char.Name = name
 
 	if key == NameKey(event.Server.Conn.Me().Nick) || (key == game.Last && !*rpgallowrepeats) {
+		game.Unlock()
 		return
 	}
 	game.Last = key
@@ -981,13 +1057,28 @@ func (game *Game) Attack(event *Event) {
 		if xp < 1 {
 			xp = 1
 		}
+
+		maxLevel := int64(0)
+		for n, _ := range monster.Characters {
+			char := game.GetCharacter(n, true)
+			if char.Level > maxLevel {
+				maxLevel = char.Level
+			}
+		}
+
 		prefix := monster.Prefix
 		if prefix != "" {
 			prefix = prefix + " "
 		}
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
-			levelled := char.GainXP(xp)
+
+			extra := maxLevel - char.Level
+			if extra > xp {
+				extra = xp
+			}
+
+			levelled := char.GainXP(xp + extra)
 			monster.assignStats(char)
 			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
@@ -1004,6 +1095,7 @@ func (game *Game) Attack(event *Event) {
 		}
 		game.Defeated = append(game.Defeated, monster)
 		game.Monster = game.NewMonster()
+		game.Unlock()
 		game.Save()
 		game.Upload()
 	}
