@@ -281,8 +281,8 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("sizesmall"), sizeRarityGroup, "Candy from a baby", "Defeat a small monster", NewGoal(STAT_SMALL_DEFEATED, 1)))
 	achievements.add(NewAchievement(AchievementID("sizeunique"), sizeRarityGroup, "Pulling teeth", "Defeat a unique monster", NewGoal(STAT_UNIQUE_DEFEATED, 1)))
 	dkpRarityGroup := AchievementGroup("dkp")
-	achievements.add(NewAchievement(AchievementID("dkp1"), dkpRarityGroup, "Dragonslayer", "Defeat a dragon", NewGoal(STAT_DKP, 1)))
-	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "Lord of the dragon", "Defeat 100 dragons", NewGoal(STAT_DKP, 100)))
+	achievements.add(NewAchievement(AchievementID("dkp1"), dkpRarityGroup, "Dragonslayer", "Slay a dragon", NewGoal(STAT_DKP, 1)))
+	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "Lord of the dragon", "Slay 100 dragons", NewGoal(STAT_DKP, 100)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -693,9 +693,8 @@ func (item *Item) Migrate() {
 		name = strings.Replace(name, str, prefixes[rand.Intn(len(prefixes))], -1)
 	}
 	for i, _ := range bannedItemNames {
-		names := bannedItemNames[i]
-		for _, str := range names {
-			name = strings.Replace(name, str, names[rand.Intn(len(names))], -1)
+		for _, str := range bannedItemNames[i] {
+			name = strings.Replace(name, str, itemNames[i][rand.Intn(len(itemNames[i]))], -1)
 		}
 	}
 	item.Name = name
