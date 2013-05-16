@@ -262,7 +262,7 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("defeated500"), defeatedGroup, "Exalted in battle", "Defeat 500 monsters", NewGoal(STAT_DEFEATED, 500)))
 	achievements.add(NewAchievement(AchievementID("defeated1000"), defeatedGroup, "Infamous in battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 1000)))
 	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Beyond battle", "Defeat 10,000 monsters", NewGoal(STAT_DEFEATED, 10000)))
-	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Ascended in battle", "Defeat 100,000 monsters", NewGoal(STAT_DEFEATED, 100000)))
+	achievements.add(NewAchievement(AchievementID("defeated100000"), defeatedGroup, "Ascended in battle", "Defeat 100,000 monsters", NewGoal(STAT_DEFEATED, 100000)))
 	defeatedLessThan10Group := AchievementGroup("defeatedlessthan10")
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan101"), defeatedLessThan10Group, "Fast", "Defeat a monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1)))
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan10100"), defeatedLessThan10Group, "Quick", "Defeat a huge monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 100)))
