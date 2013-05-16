@@ -801,13 +801,14 @@ func (character *Character) MaxXP() int64 {
 
 func (character *Character) GainXP(xp int64) bool {
 	character.XP += xp
-	if character.XP >= character.MaxXP() {
+	levelled := false
+	for character.XP >= character.MaxXP() {
+		character.XP -= character.MaxXP()
 		character.Level++
-		character.XP = 0
 		character.AddItems()
-		return true
+		levelled = true
 	}
-	return false
+	return levelled
 }
 
 func (game *Game) GetCharacter(name string, create bool) *Character {
