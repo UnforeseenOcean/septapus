@@ -319,6 +319,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 	partchan := FilterSelfRoom(bot.GetEventHandler(client.PART), server.Name, room)
 	messagechan := FilterRoom(bot.GetEventHandler(client.PRIVMSG), server.Name, room)
 	listenchan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpglisten")
+	statschan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpgstats")
 
 	quit := func() {
 		bot.RemoveEventHandler(disconnectchan)
@@ -370,40 +371,77 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 			if !ok {
 				return
 			}
-			char := game.GetCharacter(event.Line.Nick, false)
-			if char == nil {
-				break
+			game.ListenCommand(event)
+		case event, ok := <-statschan:
+			if !ok {
+				return
 			}
-			fields := strings.Fields(event.Line.Text())
-			if event.Line.Target() == event.Line.Nick {
-				// Private message to us, must include a room
-				if (len(fields) == 2 || len(fields) == 3) && fields[1] == string(room) {
-					if len(fields) == 3 {
-						char.Listening = fields[2] == "true"
-					}
-				} else {
-					// Don't send status update if message is targeting from the wrong room
-					break
-				}
-			} else {
-				if event.Room == room {
-					if len(fields) == 2 {
-						char.Listening = fields[1] == "true"
-					}
-				} else {
-					// Don't send status update if message is coming from the wrong room
-					break
-				}
-			}
-			if char.Listening {
-				event.Server.Conn.Privmsg(event.Line.Nick, "Listening in "+string(room))
-			} else {
-				event.Server.Conn.Privmsg(event.Line.Nick, "Not listening in "+string(room))
-			}
+			game.StatsCommand(event)
 		}
 	}
 
 	savequit <- true
+}
+
+func (game *Game) ListenCommand(event *Event) {
+	game.Lock()
+	defer game.Unlock()
+
+	char := game.GetCharacter(event.Line.Nick, false)
+	if char == nil {
+		return
+	}
+	fields := strings.Fields(event.Line.Text())
+	if event.Line.Target() == event.Line.Nick {
+		// Private message to us, must include a room
+		if (len(fields) == 2 || len(fields) == 3) && fields[1] == string(game.Room) {
+			if len(fields) == 3 {
+				char.Listening = fields[2] == "true"
+			}
+		} else {
+			// Don't send status update if message is targeting from the wrong room
+			return
+		}
+	} else {
+		if event.Room == game.Room {
+			if len(fields) == 2 {
+				char.Listening = fields[1] == "true"
+			}
+		} else {
+			// Don't send status update if message is coming from the wrong room
+			return
+		}
+	}
+	if char.Listening {
+		event.Server.Conn.Privmsg(event.Line.Nick, "Listening in "+string(game.Room))
+	} else {
+		event.Server.Conn.Privmsg(event.Line.Nick, "Not listening in "+string(game.Room))
+	}
+}
+
+func (game *Game) StatsCommand(event *Event) {
+	game.Lock()
+	defer game.Unlock()
+
+	fields := strings.Fields(event.Line.Text())
+	target := event.Line.Target()
+	if target == event.Line.Nick {
+		// Private message to us, must include a room
+		if !(len(fields) == 2 && fields[1] == string(game.Room)) {
+			// Don't send status update if message is targeting from the wrong room
+			return
+		}
+	} else {
+		if event.Room != game.Room {
+			// Don't send status update if message is coming from the wrong room
+			return
+		}
+	}
+	event.Server.Conn.Privmsg(target, game.Stats())
+}
+
+func (game *Game) Stats() string {
+	return fmt.Sprintf("%v (%d/%d)", game.Monster.Name, game.Monster.Health, game.Monster.MaxHealth)
 }
 
 func (game *Game) Load(server ServerName, room RoomName) {
@@ -1051,6 +1089,9 @@ func (game *Game) Attack(event *Event) {
 	monster.AddCharacter(name)
 	monster.Health -= int64(len(monster.Characters))
 	if monster.Health <= 0 {
+		game.Defeated = append(game.Defeated, monster)
+		game.Monster = game.NewMonster()
+
 		monster.Slayed = key
 		monster.Died = time.Now()
 		xp := int64(float64(len(monster.Characters)) * monster.Difficulty)
@@ -1070,6 +1111,10 @@ func (game *Game) Attack(event *Event) {
 		if prefix != "" {
 			prefix = prefix + " "
 		}
+		newprefix := game.Monster.Prefix
+		if newprefix != "" {
+			newprefix = newprefix + " "
+		}
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
 
@@ -1083,18 +1128,16 @@ func (game *Game) Attack(event *Event) {
 			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
 				if n == key {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp!", prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp.", prefix, monster.Name, game.Room, xp))
 				} else {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp!", event.Line.Nick, prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp.", event.Line.Nick, prefix, monster.Name, game.Room, xp))
 				}
 				if levelled {
 					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
 				}
+				event.Server.Conn.Privmsg(n, fmt.Sprintf("You see %v%v approaching.", newprefix, game.Stats()))
 			}
-
 		}
-		game.Defeated = append(game.Defeated, monster)
-		game.Monster = game.NewMonster()
 		game.Unlock()
 		game.Save()
 		game.Upload()

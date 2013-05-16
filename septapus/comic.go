@@ -33,7 +33,7 @@ var comicallowrepeats = flag.Bool("comicallowrepeats", false, "Can one person la
 
 const (
 	arrowHeight float64 = 5
-	laughRegex  string  = `\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)\b`
+	laughRegex  string  = `\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)|lmao\b`
 )
 
 const (
@@ -131,6 +131,13 @@ func isLaugh(text string) bool {
 	return false
 }
 
+func stripLaugh(text string) string {
+	if regex, err := regexp.Compile(laughRegex); err == nil {
+		return strings.TrimSpace(regex.ReplaceAllString(text, ""))
+	}
+	return text
+}
+
 func randomLaugh() string {
 	r := rand.Float32()
 	if r < 0.25 {
@@ -196,6 +203,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 			text := event.Line.Text()
 			if isUrl(text) != "" {
 				reset()
+				break
 			} else if isLaugh(text) {
 				if lastLaugh != event.Line.Nick || *comicallowrepeats {
 					lastLaugh = event.Line.Nick
@@ -209,33 +217,35 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 						server.Conn.Privmsg(string(room), randomLaugh())
 						scriptchan <- &Script{script, room}
 						reset()
+						break
 					}
+				}
+				if stripLaugh(text) == "" {
+					break
 				}
 			} else {
 				if laughs > 0 {
 					laughs--
-					if laughs <= 0 {
-						reset()
-					}
+					timeout = false
 				} else if timeout {
 					reset()
 				}
-
-				if _, ok := speakers[event.Line.Nick]; !ok {
-					for {
-						speaker = Speaker(rand.Intn(len(comic.avatars)))
-						if _, ok := avatars[speaker]; !ok {
-							avatars[speaker] = true
-							break
-						}
-					}
-					speakers[event.Line.Nick] = speaker
-				} else {
-					speaker = speakers[event.Line.Nick]
-				}
-
-				script = append(script, &Message{speaker, Text(text)})
 			}
+
+			if _, ok := speakers[event.Line.Nick]; !ok {
+				for {
+					speaker = Speaker(rand.Intn(len(comic.avatars)))
+					if _, ok := avatars[speaker]; !ok {
+						avatars[speaker] = true
+						break
+					}
+				}
+				speakers[event.Line.Nick] = speaker
+			} else {
+				speaker = speakers[event.Line.Nick]
+			}
+
+			script = append(script, &Message{speaker, Text(text)})
 		case <-time.After(5 * time.Minute):
 			timeout = true
 		}
