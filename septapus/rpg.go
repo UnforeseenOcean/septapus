@@ -71,7 +71,9 @@ const (
 	STAT_RAID_SIZE
 	STAT_ITEM_RARITY
 	STAT_SMALL_DEFEATED
+	STAT_LARGE_DEFEATED
 	STAT_UNIQUE_DEFEATED
+	STAT_RARE_DEFEATED
 	STAT_DKP
 )
 
@@ -190,6 +192,7 @@ var (
 	monsterSmall  []string
 	monsterLarge  []string
 	monsterUnique []string
+	monsterRare   []string
 
 	healthColors []color.Color
 	healthRatios []float64
@@ -213,8 +216,9 @@ var (
 func init() {
 	monsterSmall = []string{"Tiny", "Small", "Weak", "Infected", "Sick", "Fragile", "Impaired", "Blind"}
 	monsterLarge = []string{"Large", "Giant", "Huge", "Epic", "King", "Champion", "Queen", "Master", "Lord"}
-	monsterUnique = []string{"blood", "death", "rot", "sneeze", "pus", "spit", "puke", "burn", "shot", "rend", "slice", "maim"}
+	monsterUnique = []string{"blood", "death", "rot", "sneeze", "pus", "spit", "puke", "burn", "shot", "rend", "slice", "maim", "boil", "singe", "taunt", "scab", "scratch"}
 	monsterNames = []string{"Skeleton", "Zombie", "Slime", "Kobold", "Ant", "Cockatrice", "Pyrolisk", "Werewolf", "Wolf", "Warg", "Hell-hound", "Gas Spore", "Gremlin", "Gargoyle", "Mind Flayer", "Imp", "Mimic", "Nymph", "Goblin", "Orc", "Mastodon", "Kraken", "Spider", "Scorpion", "Unicorn", "Narwhal", "Narhorse", "Worm", "Angel", "Archon", "Bat", "Centaur", "Dragon", "Elemental", "Minotaur", "Lich", "Mummy", "Naga", "Ogre", "Snake", "Troll", "Ghoul", "Golem", "Doppelganger", "Ghost", "Shade", "Demon", "Pit Fiend", "Balrog"}
+	monsterRare = []string{"Yanthra", "Baelzebub"}
 
 	healthColors = []color.Color{color.RGBA{0, 0, 0, 1}, color.RGBA{153, 0, 0, 1}, color.RGBA{204, 0, 0, 1}, color.RGBA{255, 153, 0, 1}, color.RGBA{255, 204, 0, 1}, color.RGBA{0, 204, 0, 1}}
 	healthRatios = []float64{0, 0.5, 0.625, 0.75, 0.875, 1}
@@ -257,7 +261,8 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("defeated100"), defeatedGroup, "Revered in battle", "Defeat 100 monsters", NewGoal(STAT_DEFEATED, 100)))
 	achievements.add(NewAchievement(AchievementID("defeated500"), defeatedGroup, "Exalted in battle", "Defeat 500 monsters", NewGoal(STAT_DEFEATED, 500)))
 	achievements.add(NewAchievement(AchievementID("defeated1000"), defeatedGroup, "Infamous in battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 1000)))
-	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Beyond battle", "Defeat 1000 monsters", NewGoal(STAT_DEFEATED, 10000)))
+	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Beyond battle", "Defeat 10,000 monsters", NewGoal(STAT_DEFEATED, 10000)))
+	achievements.add(NewAchievement(AchievementID("defeated10000"), defeatedGroup, "Ascended in battle", "Defeat 100,000 monsters", NewGoal(STAT_DEFEATED, 100000)))
 	defeatedLessThan10Group := AchievementGroup("defeatedlessthan10")
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan101"), defeatedLessThan10Group, "Fast", "Defeat a monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 1)))
 	achievements.add(NewAchievement(AchievementID("defeatedlessthan10100"), defeatedLessThan10Group, "Quick", "Defeat a huge monster in less than 10 minutes", NewGoal(STAT_DEFEATED_LESS_THAN_10, 100)))
@@ -266,7 +271,8 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("slayed1"), slayedGroup, "Slaughter", "Slayed 1 monster", NewGoal(STAT_SLAYED, 1)))
 	achievements.add(NewAchievement(AchievementID("slayed5"), slayedGroup, "Massacre", "Slayed 10 monsters", NewGoal(STAT_SLAYED, 10)))
 	achievements.add(NewAchievement(AchievementID("slayed50"), slayedGroup, "Bloodbath", "Slayed 50 monsters", NewGoal(STAT_SLAYED, 50)))
-	achievements.add(NewAchievement(AchievementID("slayed100"), slayedGroup, "Eradication", "Slayed 100 monsters", NewGoal(STAT_SLAYED, 100)))
+	achievements.add(NewAchievement(AchievementID("slayed100"), slayedGroup, "Decimation", "Slayed 100 monsters", NewGoal(STAT_SLAYED, 100)))
+	achievements.add(NewAchievement(AchievementID("slayed1000"), slayedGroup, "Eradication", "Slayed 1000 monsters", NewGoal(STAT_SLAYED, 1000)))
 	raidSizeGroup := AchievementGroup("raidsize")
 	achievements.add(NewAchievement(AchievementID("raid5"), raidSizeGroup, "Crowd", "Defeat a monster in a raid of at least 5 people", NewGoal(STAT_RAID_SIZE, 5)))
 	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
@@ -279,7 +285,9 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("itemrarity4"), itemRarityGroup, "Legendary", "Find a legendary item", NewGoal(STAT_ITEM_RARITY, 5)))
 	sizeRarityGroup := AchievementGroup("size")
 	achievements.add(NewAchievement(AchievementID("sizesmall"), sizeRarityGroup, "Candy from a baby", "Defeat a small monster", NewGoal(STAT_SMALL_DEFEATED, 1)))
+	achievements.add(NewAchievement(AchievementID("sizelarge"), sizeRarityGroup, "The bigger they are", "Defeat a large monster", NewGoal(STAT_LARGE_DEFEATED, 1)))
 	achievements.add(NewAchievement(AchievementID("sizeunique"), sizeRarityGroup, "Pulling teeth", "Defeat a unique monster", NewGoal(STAT_UNIQUE_DEFEATED, 1)))
+	achievements.add(NewAchievement(AchievementID("sizerare"), sizeRarityGroup, "Impossible!", "Defeat a rare monster", NewGoal(STAT_RARE_DEFEATED, 1)))
 	dkpRarityGroup := AchievementGroup("dkp")
 	achievements.add(NewAchievement(AchievementID("dkp1"), dkpRarityGroup, "Dragonslayer", "Slay a dragon", NewGoal(STAT_DKP, 1)))
 	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "Lord of the dragon", "Slay 100 dragons", NewGoal(STAT_DKP, 100)))
@@ -879,7 +887,11 @@ func (game *Game) NewMonster() *Monster {
 	name := monsterNames[rand.Intn(len(monsterNames))]
 	prefix := "a"
 	r := rand.Float64()
-	if r > 0.95 {
+	if r > 0.99 {
+		difficulty += 4 + rand.Float64()*5
+		name = monsterRare[rand.Intn(len(monsterRare))]
+		prefix = ""
+	} else if r > 0.94 {
 		difficulty += 1 + rand.Float64()
 		first := monsterUnique[rand.Intn(len(monsterUnique))]
 		second := ""
@@ -888,10 +900,10 @@ func (game *Game) NewMonster() *Monster {
 		}
 		name = strings.ToUpper(string(first[0])) + first[1:] + second
 		prefix = ""
-	} else if r > 0.75 {
+	} else if r > 0.74 {
 		difficulty += rand.Float64()
 		name = monsterLarge[rand.Intn(len(monsterLarge))] + " " + name
-	} else if r > 0.5 {
+	} else if r > 0.54 {
 		difficulty -= rand.Float64() / 2.0
 		name = monsterSmall[rand.Intn(len(monsterSmall))] + " " + name
 	}
@@ -1061,13 +1073,16 @@ func (monster *Monster) assignStats(character *Character) {
 	if raidSize > stats[STAT_RAID_SIZE] {
 		stats[STAT_RAID_SIZE] = raidSize
 	}
-	difficulty := int64(monster.Difficulty)
-
-	switch difficulty {
-	case 0:
+	difficulty := monster.Difficulty
+	switch {
+	case difficulty < 1:
 		stats[STAT_SMALL_DEFEATED]++
-	case 2:
+	case difficulty > 1 && difficulty < 2:
+		stats[STAT_LARGE_DEFEATED]++
+	case difficulty >= 2 && difficulty < 5:
 		stats[STAT_UNIQUE_DEFEATED]++
+	case difficulty >= 5:
+		stats[STAT_RARE_DEFEATED]++
 	}
 }
 
