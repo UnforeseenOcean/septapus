@@ -449,7 +449,18 @@ func (game *Game) StatsCommand(event *Event) {
 }
 
 func (game *Game) Stats() string {
-	return fmt.Sprintf("%v (%d/%d)", game.Monster.Name, game.Monster.Health, game.Monster.MaxHealth)
+	raid := ""
+	for key, _ := range game.Monster.Characters {
+		if len(raid) > 0 {
+			raid += ", "
+		}
+		raid += game.GetCharacter(key, true).Name
+	}
+	return fmt.Sprintf("%v [%v]", game.Monster.Stats(), raid)
+}
+
+func (monster *Monster) Stats() string {
+	return fmt.Sprintf("%v (%d/%d)", monster.Name, monster.Health, monster.MaxHealth)
 }
 
 func (game *Game) Load(server ServerName, room RoomName) {
@@ -1155,7 +1166,7 @@ func (game *Game) Attack(event *Event) {
 				if levelled {
 					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
 				}
-				event.Server.Conn.Privmsg(n, fmt.Sprintf("You see %v%v approaching.", newprefix, game.Stats()))
+				event.Server.Conn.Privmsg(n, fmt.Sprintf("You see %v%v approaching.", newprefix, monster.Stats()))
 			}
 		}
 		game.Unlock()
