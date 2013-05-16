@@ -1107,19 +1107,23 @@ func (game *Game) Attack(event *Event) {
 		game.Defeated = append(game.Defeated, monster)
 		game.Monster = game.NewMonster()
 
-		monster.Slayed = key
 		monster.Died = time.Now()
 		xp := int64(float64(len(monster.Characters)) * monster.Difficulty)
 		if xp < 1 {
 			xp = 1
 		}
 
+		slayed := rand.Intn(len(monster.Characters))
 		maxLevel := int64(0)
 		for n, _ := range monster.Characters {
 			char := game.GetCharacter(n, true)
 			if char.Level > maxLevel {
 				maxLevel = char.Level
 			}
+			if slayed == 0 {
+				monster.Slayed = n
+			}
+			slayed--
 		}
 
 		prefix := monster.Prefix
