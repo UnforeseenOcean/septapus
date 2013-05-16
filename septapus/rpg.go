@@ -1125,6 +1125,7 @@ func (game *Game) Attack(event *Event) {
 			}
 			slayed--
 		}
+		slayedName := game.GetCharacter(monster.Slayed, true).Name
 
 		prefix := monster.Prefix
 		if prefix != "" {
@@ -1146,10 +1147,10 @@ func (game *Game) Attack(event *Event) {
 			monster.assignStats(char)
 			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
-				if n == key {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp.", prefix, monster.Name, game.Room, xp))
+				if n == monster.Slayed {
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp.", prefix, monster.Name, game.Room, xp+extra))
 				} else {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp.", event.Line.Nick, prefix, monster.Name, game.Room, xp))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp.", slayedName, prefix, monster.Name, game.Room, xp+extra))
 				}
 				if levelled {
 					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
