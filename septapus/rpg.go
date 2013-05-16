@@ -898,7 +898,7 @@ func (game *Game) NewMonster() *Monster {
 	name := monsterNames[rand.Intn(len(monsterNames))]
 	prefix := "a"
 	r := rand.Float64()
-	if r > 0.99 {
+	if r > 0.99 && health > 100 {
 		difficulty += 4 + rand.Float64()*5
 		name = monsterRare[rand.Intn(len(monsterRare))]
 		prefix = ""
