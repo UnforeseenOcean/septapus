@@ -220,7 +220,8 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 						break
 					}
 				}
-				if stripLaugh(text) == "" {
+				text = stripLaugh(text)
+				if text == "" {
 					break
 				}
 			} else {
@@ -231,7 +232,6 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 					reset()
 				}
 			}
-
 			if _, ok := speakers[event.Line.Nick]; !ok {
 				for {
 					speaker = Speaker(rand.Intn(len(comic.avatars)))
