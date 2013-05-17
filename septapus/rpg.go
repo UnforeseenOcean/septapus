@@ -1126,7 +1126,9 @@ func (game *Game) Attack(event *Event) {
 
 		slayed := rand.Intn(len(monster.Characters))
 		maxLevel := int64(0)
-		for n, _ := range monster.Characters {
+		average := 0.0
+		max := int64(0)
+		for n, count := range monster.Characters {
 			char := game.GetCharacter(n, true)
 			if char.Level > maxLevel {
 				maxLevel = char.Level
@@ -1135,7 +1137,12 @@ func (game *Game) Attack(event *Event) {
 				monster.Slayed = n
 			}
 			slayed--
+			average += float64(count)
+			if count > max {
+				max = count
+			}
 		}
+		average /= float64(len(monster.Characters))
 		slayedName := game.GetCharacter(monster.Slayed, true).Name
 
 		prefix := monster.Prefix
@@ -1146,22 +1153,28 @@ func (game *Game) Attack(event *Event) {
 		if newprefix != "" {
 			newprefix = newprefix + " "
 		}
-		for n, _ := range monster.Characters {
+		for n, count := range monster.Characters {
 			char := game.GetCharacter(n, true)
 
-			extra := maxLevel - char.Level
-			if extra > xp {
-				extra = xp
+			exp := xp
+			// You have to beat the average amount of talking to get full XP.
+			if count < int64(average) {
+				exp = int64(float64(exp) * float64(count) / float64(max))
 			}
+			extra := maxLevel - char.Level
+			if extra > exp {
+				extra = exp
+			}
+			exp += extra
 
-			levelled := char.GainXP(xp + extra)
+			levelled := char.GainXP(exp)
 			monster.assignStats(char)
 			achievements.check(char.stats, char.Achievements)
 			if char.Listening {
 				if n == monster.Slayed {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp.", prefix, monster.Name, game.Room, xp+extra))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just slayed %v%v in %v and gained %d xp.", prefix, monster.Name, game.Room, exp))
 				} else {
-					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp.", slayedName, prefix, monster.Name, game.Room, xp+extra))
+					event.Server.Conn.Privmsg(n, fmt.Sprintf("You helped %v slay %v%v in %v and gained %d xp.", slayedName, prefix, monster.Name, game.Room, exp))
 				}
 				if levelled {
 					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
