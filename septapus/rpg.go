@@ -1166,7 +1166,7 @@ func (game *Game) Attack(event *Event) {
 				if levelled {
 					event.Server.Conn.Privmsg(n, fmt.Sprintf("You just levelled up in %v to level %d!", game.Room, char.Level))
 				}
-				event.Server.Conn.Privmsg(n, fmt.Sprintf("You see %v%v approaching.", newprefix, monster.Stats()))
+				event.Server.Conn.Privmsg(n, fmt.Sprintf("You see %v%v approaching.", newprefix, game.Monster.Stats()))
 			}
 		}
 		game.Unlock()
