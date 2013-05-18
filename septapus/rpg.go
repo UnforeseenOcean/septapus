@@ -329,10 +329,15 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 	listenchan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpglisten")
 	statschan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpgstats")
 
+	hasQuit := false
 	quit := func() {
-		bot.RemoveEventHandler(disconnectchan)
-		bot.RemoveEventHandler(partchan)
-		bot.RemoveEventHandler(messagechan)
+		if !hasQuit {
+			bot.RemoveEventHandler(disconnectchan)
+			bot.RemoveEventHandler(partchan)
+			bot.RemoveEventHandler(messagechan)
+			hasQuit = true
+		}
+
 	}
 
 	save := func() {
