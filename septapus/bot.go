@@ -217,7 +217,7 @@ func FilterSelfRoom(channel chan *Event, server ServerName, room RoomName) chan 
 
 func FilterSimpleCommand(channel chan *Event, command string) chan *Event {
 	return Filter(channel, func(event *Event) bool {
-		return strings.HasPrefix(event.Line.Text(), command)
+		return event.Line.Text() == command || strings.HasPrefix(event.Line.Text(), command+" ")
 	})
 }
 

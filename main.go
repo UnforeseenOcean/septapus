@@ -24,6 +24,7 @@ func main() {
 	bot.AddPlugin(septapus.NewInvitePlugin(nofreenode))
 	bot.AddPlugin(septapus.NewComicPlugin(nofreenode))
 	bot.AddPlugin(septapus.NewRPGPlugin(nil))
+	bot.AddPlugin(septapus.NewPRPlugin(nil))
 	bot.AddServer(septapus.NewServerSimple("synirc", "irc.synirc.net", "SeptapusTest", "Septapus", "Septapus v9", []string{"#septapus", "#septapustest"}))
 	bot.AddServer(septapus.NewServerSimple("freenode", "irc.freenode.net", "SeptapusTest", "Septapus", "Septapus v9", []string{"#septapus"}))
 	defer bot.Disconnect()
