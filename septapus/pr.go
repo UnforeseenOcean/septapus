@@ -80,14 +80,19 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 			fields := strings.Fields(event.Line.Text())
 			message := ""
 			if len(fields) == 2 {
-				message = prs.List(fields[1])
+				message = prs.List(strings.ToLower(fields[1]))
+				if message == "" {
+					server.Conn.Privmsg(event.Line.Nick, "No PR's for that nick.")
+					break
+				}
 			} else if len(fields) == 3 {
 				prName := PRName(fields[2])
-				pr := prs.Get(fields[1], prName)
+				pr := prs.Get(strings.ToLower(fields[1]), prName)
 				if pr != nil {
 					message = fmt.Sprintf("%v %v", prNames[prName], *pr)
 				} else {
-					server.Conn.Privmsg(event.Line.Nick, "Bad command: !pr <nick> [lift]")
+					server.Conn.Privmsg(event.Line.Nick, "No PR for that nick.")
+					break
 				}
 			}
 			if message != "" {
@@ -102,7 +107,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 
 			fields := strings.Fields(event.Line.Text())
 			if len(fields) == 3 {
-				pr := prs.Set(event.Line.Nick, PRName(fields[1]), PR(fields[2]))
+				pr := prs.Set(strings.ToLower(event.Line.Nick), PRName(fields[1]), PR(fields[2]))
 				if pr != nil {
 					prs.Save(server.Name)
 				} else {
