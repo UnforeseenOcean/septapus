@@ -127,7 +127,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 			server.Conn.Privmsg(event.Line.Nick, "!pr <nick> [lift] - Prints the all the PR's for a nick, or just the chosen lift.")
 			server.Conn.Privmsg(event.Line.Nick, "!prset [lift] [weight] - Sets a PR for a lift.")
 			server.Conn.Privmsg(event.Line.Nick, "Valid lifts: "+message)
-			server.Conn.Privmsg(event.Line.Nick, "Valid weights can be in kgs or lbs with optional reps. eg: 1kg, 100lbs, 225lbsx32")
+			server.Conn.Privmsg(event.Line.Nick, "Valid weights can be in kgs or lbs with optional reps. eg: 1kg, 100lbs, 32x225lbs, 1x25kgs")
 		}
 	}
 }
