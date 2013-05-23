@@ -294,7 +294,7 @@ func (lifter *Lifter) List() string {
 		if len(str) != 0 {
 			str += ", "
 		}
-		lift := lifter.Best(liftName)
+		lift := lifter.Best(LiftName(liftName))
 		str += lift.Name.String() + ": " + lift.String()
 	}
 	return str
