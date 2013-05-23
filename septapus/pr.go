@@ -558,7 +558,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 			}
 			server.Conn.Privmsg(event.Line.Nick, "Commands:")
 			server.Conn.Privmsg(event.Line.Nick, "!pr <nick> [lift] - Prints the all the PR's for a nick, or just the chosen lift.")
-			server.Conn.Privmsg(event.Line.Nick, "!prset [lift] [weight] - Sets a PR for a lift.")
+			server.Conn.Privmsg(event.Line.Nick, "!pradd [lift] [weight] - Sets a PR for a lift.")
 			server.Conn.Privmsg(event.Line.Nick, "!prrank <lift> <nick> <othernick> [nick,] - Ranks a list of nicks on their PR's.")
 			server.Conn.Privmsg(event.Line.Nick, "!prhistory <nick> <lift> - Prints the PR history for a nick's lift.")
 			server.Conn.Privmsg(event.Line.Nick, "!prclear [lift] - Clears all PR's for a lift.")
