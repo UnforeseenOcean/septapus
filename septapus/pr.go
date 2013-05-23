@@ -517,26 +517,30 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 					break
 				}
 				people := fields[2:]
-				liftToLifter := make(map[*Lift]*Lifter)
-				bests := make(Lifts, 0)
-				for _, name := range people {
-					if lifter := prs.GetLifter(name, false); lifter != nil {
-						if best := lifter.Best(liftName); best != nil {
-							liftToLifter[best] = lifter
-							bests = append(bests, best)
+				if len(people) {
+					liftToLifter := make(map[*Lift]*Lifter)
+					bests := make(Lifts, 0)
+					for _, name := range people {
+						if lifter := prs.GetLifter(name, false); lifter != nil {
+							if best := lifter.Best(liftName); best != nil {
+								liftToLifter[best] = lifter
+								bests = append(bests, best)
+							}
 						}
 					}
-				}
-				sort.Sort(bests)
-				msg := ""
-				for _, lift := range bests {
-					if len(msg) != 0 {
-						msg += ", "
+					if len(bests) {
+						sort.Sort(bests)
+						msg := ""
+						for _, lift := range bests {
+							if len(msg) != 0 {
+								msg += ", "
+							}
+							msg += fmt.Sprintf("%v (%v)", liftToLifter[lift].Nick, lift.Weight.String())
+						}
+						msg = fmt.Sprintf("%v: %v", liftName.String(), msg)
+						server.Conn.Privmsg(event.Line.Target(), msg)
 					}
-					msg += fmt.Sprintf("%v (%v)", liftToLifter[lift].Nick, lift.Weight.String())
 				}
-				msg = fmt.Sprintf("%v: %v", liftName.String(), msg)
-				server.Conn.Privmsg(event.Line.Target(), msg)
 			}
 
 		case event, ok := <-prhelpchan:
