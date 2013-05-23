@@ -33,7 +33,7 @@ var comicallowrepeats = flag.Bool("comicallowrepeats", false, "Can one person la
 
 const (
 	arrowHeight float64 = 5
-	laughRegex  string  = `(?i)\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)|lmao\b`
+	laughRegex  string  = `(?i)\b(o*lo+l(l|o)*)|(ro+fl(l|o)*e*)|(b*a*h(h|a)+(h|a)+)|(e*he(h|e)+)|(e*ke(k|e)+)|lf*mao+\b`
 )
 
 const (
@@ -220,8 +220,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 						break
 					}
 				}
-				text = stripLaugh(text)
-				if text == "" {
+				if stripLaugh(text) == "" {
 					break
 				}
 			} else {
