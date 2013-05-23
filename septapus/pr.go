@@ -517,7 +517,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 					break
 				}
 				people := fields[2:]
-				if len(people) {
+				if len(people) > 0 {
 					liftToLifter := make(map[*Lift]*Lifter)
 					bests := make(Lifts, 0)
 					for _, name := range people {
@@ -528,7 +528,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 							}
 						}
 					}
-					if len(bests) {
+					if len(bests) > 0 {
 						sort.Sort(bests)
 						msg := ""
 						for _, lift := range bests {
