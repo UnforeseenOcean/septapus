@@ -375,6 +375,8 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 	prs := &PRS{}
 	prs.Load(server.Name)
 
+	defer prs.Save(server.Name)
+
 	prchan := FilterSimpleCommand(FilterServer(settings.GetEventHandler(bot, client.PRIVMSG), server.Name), "!pr")
 	prhistorychan := FilterSimpleCommand(FilterServer(settings.GetEventHandler(bot, client.PRIVMSG), server.Name), "!prhistory")
 	praddchan := FilterSimpleCommand(FilterServer(settings.GetEventHandler(bot, client.PRIVMSG), server.Name), "!pradd")
@@ -463,7 +465,6 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 				lift, err := NewLift(fields[1], fields[2])
 				if err == nil {
 					lifter.AddLift(lift)
-					prs.Save(server.Name)
 					if lift == lifter.Best(lift.Name) {
 						server.Conn.Privmsg(event.Line.Nick, fmt.Sprintf("Added lift, New PR!! %v: %v", lift.Name.String(), lift.String()))
 					} else {
@@ -558,8 +559,11 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 			server.Conn.Privmsg(event.Line.Nick, "!prclear [lift] - Clears all PR's for a lift.")
 			server.Conn.Privmsg(event.Line.Nick, "Valid lifts: "+message)
 			server.Conn.Privmsg(event.Line.Nick, "Valid weights can be in kgs or lbs with optional reps. eg: 1kg, 100lbs, 32x225lbs, 1x25kgs")
+		case <-time.After(1 * time.Minute):
+			prs.Save(server.Name)
 		}
 	}
+
 }
 
 func (prs *PRS) Load(server ServerName) {
