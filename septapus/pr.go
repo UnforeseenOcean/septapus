@@ -498,6 +498,7 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 						break
 					} else {
 						delete(lifter.Lifts, key)
+						delete(lifter.bestLifts, key)
 					}
 				} else {
 					server.Conn.Privmsg(event.Line.Nick, "No PR's found.")
