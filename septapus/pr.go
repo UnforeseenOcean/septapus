@@ -277,11 +277,12 @@ func (prs *PRS) GetLifter(nick string, create bool) (lifter *Lifter) {
 func (lifter *Lifter) AddLift(lift *Lift) {
 	key := string(lift.Name)
 	lifter.Lifts[key] = append(lifter.Lifts[key], lift)
-
 	if lifter.bestLifts[key] != nil {
 		if lift.Compare(lifter.bestLifts[key]) == 1 {
 			lifter.bestLifts[key] = lift
 		}
+	} else {
+		lifter.bestLifts[key] = lift
 	}
 }
 
@@ -290,11 +291,10 @@ func (lifter *Lifter) List() string {
 	if lifter.Lifts == nil {
 		return str
 	}
-	for liftName := range lifter.Lifts {
+	for _, lift := range lifter.bestLifts {
 		if len(str) != 0 {
 			str += ", "
 		}
-		lift := lifter.Best(LiftName(liftName))
 		str += lift.Name.String() + ": " + lift.String()
 	}
 	return str
@@ -509,7 +509,6 @@ func PRListener(bot *Bot, settings *PluginSettings, server *Server) {
 			if !ok {
 				return
 			}
-
 			fields := strings.Fields(event.Line.Text())
 			if len(fields) >= 4 {
 				liftName := LiftName(strings.ToLower(fields[1]))
