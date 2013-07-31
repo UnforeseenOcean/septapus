@@ -1248,7 +1248,7 @@ func (game *Game) Attack(event *Event) {
 
 // Returns true when attacker makes a hit.
 func (game *Game) fight(attacker, defender *Character) bool {
-	return rand.Int63n(attacker.WeaponLevel()+6) > defender.ArmorLevel()
+	return rand.Int63n(attacker.WeaponLevel()+20) > rand.Int63n(defender.ArmorLevel()+20)
 }
 
 func (game *Game) Fight(attackerName, defenderName string) string {
@@ -1265,7 +1265,7 @@ func (game *Game) Fight(attackerName, defenderName string) string {
 		return ""
 	}
 
-	for i := 0; i < 5 || attackerHits == 0 && defenderHits == 0; i++ {
+	for i := 0; i < 5; i++ {
 		if game.fight(attacker, defender) {
 			attackerHits++
 		}
@@ -1277,6 +1277,9 @@ func (game *Game) Fight(attackerName, defenderName string) string {
 	description := fmt.Sprintf("%v (%v atk, %v def) vs %v (%v atk, %v def). ", attacker.Name, attacker.WeaponLevel(), attacker.ArmorLevel(), defender.Name, defender.WeaponLevel(), defender.ArmorLevel())
 	switch {
 	case attackerHits == defenderHits:
+		if attackerHits == 0 {
+			return fmt.Sprintf("%vEveryone fell asleep.", description)
+		}
 		return fmt.Sprintf("%vTie.", description)
 	case attackerHits > defenderHits:
 		if defenderHits == 0 {
