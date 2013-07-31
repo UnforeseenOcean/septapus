@@ -1248,7 +1248,7 @@ func (game *Game) Attack(event *Event) {
 
 // Returns true when attacker makes a hit.
 func (game *Game) fight(attacker, defender *Character) bool {
-	return rand.Int63n(20)+attacker.WeaponLevel() > rand.Int63n(20)+defender.ArmorLevel()
+	return rand.Int63n(20+attacker.Level)+attacker.WeaponLevel() > rand.Int63n(20+defender.Level)+defender.ArmorLevel()
 }
 
 func (game *Game) Fight(attackerName, defenderName string) string {
@@ -1278,9 +1278,9 @@ func (game *Game) Fight(attackerName, defenderName string) string {
 	switch {
 	case attackerHits == defenderHits:
 		if attackerHits == 0 {
-			return fmt.Sprintf("%vEveryone fell asleep.", description)
+			return fmt.Sprintf("%vTie. Everyone fell asleep.", description)
 		}
-		return fmt.Sprintf("%vTie.", description)
+		return fmt.Sprintf("%vTie. (%v to %v)", attackerHits, defenderHits)
 	case attackerHits > defenderHits:
 		if defenderHits == 0 {
 			return fmt.Sprintf("%v%v Wins. Flawless Victory!", description, attacker.Name)
