@@ -1005,10 +1005,10 @@ func (monster *Monster) Heal(health int64) {
 }
 
 func (game *Game) DefeatedReverse() Monsters {
-        num := len(game.Defeated)
-        if num > 100 {
-          num = 100
-        }
+	num := len(game.Defeated)
+	if num > 100 {
+		num = 100
+	}
 	defeated := make(Monsters, num)
 	for i := 0; i < num; i++ {
 		defeated[i] = game.Defeated[len(game.Defeated)-1-i]
@@ -1248,7 +1248,7 @@ func (game *Game) Attack(event *Event) {
 
 // Returns true when attacker makes a hit.
 func (game *Game) fight(attacker, defender *Character) bool {
-	return rand.Int63n(attacker.WeaponLevel()+20) > rand.Int63n(defender.ArmorLevel()+20)
+	return rand.Int63n(20)+attacker.WeaponLevel() > rand.Int63n(20)+defender.ArmorLevel()
 }
 
 func (game *Game) Fight(attackerName, defenderName string) string {
