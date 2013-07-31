@@ -1280,7 +1280,7 @@ func (game *Game) Fight(attackerName, defenderName string) string {
 		if attackerHits == 0 {
 			return fmt.Sprintf("%vTie. Everyone fell asleep.", description)
 		}
-		return fmt.Sprintf("%vTie. (%v to %v)", attackerHits, defenderHits)
+		return fmt.Sprintf("%vTie. (%v to %v)", description, attackerHits, defenderHits)
 	case attackerHits > defenderHits:
 		if defenderHits == 0 {
 			return fmt.Sprintf("%v%v Wins. Flawless Victory!", description, attacker.Name)
