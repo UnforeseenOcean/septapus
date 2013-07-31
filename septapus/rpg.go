@@ -328,6 +328,7 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 	messagechan := FilterRoom(bot.GetEventHandler(client.PRIVMSG), server.Name, room)
 	listenchan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpglisten")
 	statschan := FilterSimpleCommand(FilterServer(bot.GetEventHandler(client.PRIVMSG), server.Name), "!rpgstats")
+	fightchan := FilterSimpleCommand(FilterRoom(bot.GetEventHandler(client.PRIVMSG), server.Name, room), "!rpgfight")
 
 	hasQuit := false
 	quit := func() {
@@ -390,6 +391,11 @@ func (rpg *RPGPlugin) game(bot *Bot, server *Server, room RoomName) {
 				return
 			}
 			game.StatsCommand(event)
+		case event, ok := <-fightchan:
+			if !ok {
+				return
+			}
+			game.FightCommand(event)
 		}
 	}
 
@@ -429,6 +435,17 @@ func (game *Game) ListenCommand(event *Event) {
 		event.Server.Conn.Privmsg(event.Line.Nick, "Listening in "+string(game.Room))
 	} else {
 		event.Server.Conn.Privmsg(event.Line.Nick, "Not listening in "+string(game.Room))
+	}
+}
+
+func (game *Game) FightCommand(event *Event) {
+	fields := strings.Fields(event.Line.Text())
+	if len(fields) != 2 {
+		return
+	}
+	msg := game.Fight(event.Line.Nick, fields[1])
+	if msg != "" {
+		event.Server.Conn.Privmsg(string(game.Room), msg)
 	}
 }
 
@@ -766,6 +783,23 @@ func (character *Character) ItemLevel() int64 {
 	count := int64(0)
 	for i := 0; i < NUM_SLOTS; i++ {
 		if character.Items[i] != nil {
+			count += character.Items[i].Level
+		}
+	}
+	return count
+}
+
+func (character *Character) WeaponLevel() int64 {
+	if character.Items[SLOT_WEAPON] == nil {
+		return 0
+	}
+	return character.Items[SLOT_WEAPON].Level
+}
+
+func (character *Character) ArmorLevel() int64 {
+	count := int64(0)
+	for i := 0; i < NUM_SLOTS; i++ {
+		if character.Items[i] != nil && i != SLOT_WEAPON {
 			count += character.Items[i].Level
 		}
 	}
@@ -1193,4 +1227,50 @@ func (game *Game) Attack(event *Event) {
 	} else {
 		game.Unlock()
 	}
+}
+
+// Returns true when attacker makes a hit.
+func (game *Game) fight(attacker, defender *Character) bool {
+	return rand.Int63n(attacker.WeaponLevel()+6) > defender.ArmorLevel()
+}
+
+func (game *Game) Fight(attackerName, defenderName string) string {
+	game.Lock()
+	defer game.Unlock()
+
+	attacker := game.GetCharacter(attackerName, false)
+	defender := game.GetCharacter(defenderName, false)
+
+	attackerHits := 0
+	defenderHits := 0
+
+	if attacker == nil || defender == nil || attacker == defender {
+		return ""
+	}
+
+	for i := 0; i < 5 || attackerHits == 0 && defenderHits == 0; i++ {
+		if game.fight(attacker, defender) {
+			attackerHits++
+		}
+		if game.fight(defender, attacker) {
+			defenderHits++
+		}
+	}
+
+	description := fmt.Sprintf("%v (%v atk, %v def) vs %v (%v atk, %v def). ", attacker.Name, attacker.WeaponLevel(), attacker.ArmorLevel(), defender.Name, defender.WeaponLevel(), defender.ArmorLevel())
+	switch {
+	case attackerHits == defenderHits:
+		return fmt.Sprintf("%vTie.", description)
+	case attackerHits > defenderHits:
+		if defenderHits == 0 {
+			return fmt.Sprintf("%v%v Wins. Flawless Victory!", description, attacker.Name)
+		}
+		return fmt.Sprintf("%v%v Wins. (%v to %v)", description, attacker.Name, attackerHits, defenderHits)
+	case defenderHits > attackerHits:
+		if attackerHits == 0 {
+			return fmt.Sprintf("%v%v Wins. Flawless Victory!", description, defender.Name)
+		}
+		return fmt.Sprintf("%v%v Wins. (%v to %v)", description, defender.Name, defenderHits, attackerHits)
+	}
+	return ""
 }
