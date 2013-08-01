@@ -290,7 +290,10 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("sizerare"), sizeRarityGroup, "Impossible!", "Defeat a rare monster", NewGoal(STAT_RARE_DEFEATED, 1)))
 	dkpRarityGroup := AchievementGroup("dkp")
 	achievements.add(NewAchievement(AchievementID("dkp1"), dkpRarityGroup, "Dragonslayer", "Slay a dragon", NewGoal(STAT_DKP, 1)))
-	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "Lord of the dragon", "Slay 100 dragons", NewGoal(STAT_DKP, 100)))
+	achievements.add(NewAchievement(AchievementID("dkp5"), dkpRarityGroup, "Drachentöter", "Slay 5 dragons", NewGoal(STAT_DKP, 5)))
+	achievements.add(NewAchievement(AchievementID("dkp10"), dkpRarityGroup, "Bearer of the dragonscale", "Slay 10 dragons", NewGoal(STAT_DKP, 10)))
+	achievements.add(NewAchievement(AchievementID("dkp50"), dkpRarityGroup, "Lord of the dragon", "Slay 50 dragons", NewGoal(STAT_DKP, 50)))
+	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "The dragon ascendant", "Slay 100 dragons", NewGoal(STAT_DKP, 100)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -1078,9 +1081,19 @@ func (character *Character) NameStyle(includeTitle bool) template.HTML {
 	name := character.Name
 	prefix := ""
 	title := ""
+
 	if !character.Achievements["dkp100"].IsZero() {
-		title = "<span class=\"raid100\">, Lord of the Dragon</span>"
+		title = "<span class=\"raid100\">, The Dragon Ascendant</span>"
 		prefix = "<span class=\"level100\">♛</span>"
+	} else if !character.Achievements["dkp50"].IsZero() {
+		title = "<span class=\"raid100\">, Lord of the Dragon</span>"
+		prefix = "<span class=\"level75\">♛</span>"
+	} else if !character.Achievements["dkp10"].IsZero() {
+		title = "<span class=\"raid100\">, Bearer of the Dragonscale</span>"
+		prefix = "<span class=\"level50\">♛</span>"
+	} else if !character.Achievements["dkp5"].IsZero() {
+		title = "<span class=\"raid100\"> der Drachentöter</span>"
+		prefix = "<span class=\"level25\">♛</span>"
 	} else if !character.Achievements["dkp1"].IsZero() {
 		title = "<span class=\"raid100\"> the Dragonslayer</span>"
 		prefix = "<span class=\"level0\">♛</span>"
