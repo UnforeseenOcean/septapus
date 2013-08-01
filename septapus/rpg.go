@@ -1154,6 +1154,10 @@ func (monster *Monster) assignStats(character *Character) {
 }
 
 func (game *Game) Attack(event *Event) {
+	if strings.HasPrefix(event.Line.Text(), "!") {
+		return
+	}
+
 	game.Lock()
 	name := event.Line.Nick
 	key := NameKey(name)

@@ -201,7 +201,10 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 				return
 			}
 			text := event.Line.Text()
-			if isUrl(text) != "" {
+			if strings.HasPrefix(event.Line.Text(), "!") {
+				reset()
+				break
+			} else if isUrl(text) != "" {
 				reset()
 				break
 			} else if isLaugh(text) {
