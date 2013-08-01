@@ -209,7 +209,7 @@ func (comic *ComicPlugin) makeScripts(scriptchan chan *Script, bot *Bot, server 
 				break
 			} else if isLaugh(text) {
 				if lastLaugh != event.Line.Nick || *comicallowrepeats {
-					justLaugh := stripLaugh(text)
+					justLaugh := stripLaugh(text) == ""
 
 					lastLaugh = event.Line.Nick
 					if laughs <= 0 {
