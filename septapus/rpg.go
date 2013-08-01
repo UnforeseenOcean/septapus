@@ -725,8 +725,15 @@ func (game *Game) Init(server ServerName, room RoomName) {
 	if game.Characters == nil {
 		game.Characters = make(map[string]*Character)
 	} else {
-		for _, character := range game.Characters {
+		toRemove := make([]string, 0)
+		for key, character := range game.Characters {
 			character.Migrate()
+			if character.Level == 0 && character.XP == 0 {
+				toRemove = append(toRemove, key)
+			}
+		}
+		for _, key := range toRemove {
+			delete(game.Characters, key)
 		}
 	}
 	if game.Monster == nil {
