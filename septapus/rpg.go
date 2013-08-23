@@ -279,6 +279,7 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("raid5"), raidSizeGroup, "Crowd", "Defeat a monster in a raid of at least 5 people", NewGoal(STAT_RAID_SIZE, 5)))
 	achievements.add(NewAchievement(AchievementID("raid10"), raidSizeGroup, "Gang bang", "Defeat a monster in a raid of at least 10 people", NewGoal(STAT_RAID_SIZE, 10)))
 	achievements.add(NewAchievement(AchievementID("raid20"), raidSizeGroup, "Zerg rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
+	achievements.add(NewAchievement(AchievementID("raid50"), raidSizeGroup, "Zerg rush", "Defeat a monster in a raid of at least 20 people", NewGoal(STAT_RAID_SIZE, 20)))
 	itemRarityGroup := AchievementGroup("itemrarity")
 	achievements.add(NewAchievement(AchievementID("itemrarity0"), itemRarityGroup, "Junk", "Find an item", NewGoal(STAT_ITEM_RARITY, 1)))
 	achievements.add(NewAchievement(AchievementID("itemrarity1"), itemRarityGroup, "Special", "Find a special item", NewGoal(STAT_ITEM_RARITY, 2)))
@@ -301,9 +302,10 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("dmp5"), dmpRarityGroup, "Hapless luck", "Miss 5 dragons", NewGoal(STAT_DMP, 5)))
 	achievements.add(NewAchievement(AchievementID("dmp10"), dmpRarityGroup, "Dire luck", "Miss 10 dragons", NewGoal(STAT_DMP, 10)))
 	achievements.add(NewAchievement(AchievementID("dmp50"), dmpRarityGroup, "Tragic luck", "Miss 50 dragons", NewGoal(STAT_DMP, 50)))
-	achievements.add(NewAchievement(AchievementID("dmp50"), dmpRarityGroup, "Catastrophic luck", "Miss 100 dragons", NewGoal(STAT_DMP, 100)))
-	featsGroup := AchievementGroup("feats")
-	achievements.add(NewAchievement(AchievementID("helped100"), featsGroup, "Team player", "Help with 100 fights, without getting the killing blow", NewGoal(STAT_HELPED, 100)))
+	achievements.add(NewAchievement(AchievementID("dmp100"), dmpRarityGroup, "Catastrophic luck", "Miss 100 dragons", NewGoal(STAT_DMP, 100)))
+	helpedGroup := AchievementGroup("helped")
+	achievements.add(NewAchievement(AchievementID("helped100"), helpedGroup, "Team player", "Help with 100 fights, without getting the killing blow", NewGoal(STAT_HELPED, 100)))
+	achievements.add(NewAchievement(AchievementID("helped1000"), helpedGroup, "Team pro", "Help with 1000 fights, without getting the killing blow", NewGoal(STAT_HELPED, 1000)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -1114,6 +1116,16 @@ func (character *Character) NameStyle(includeTitle bool) template.HTML {
 	} else if !character.Achievements["dkp1"].IsZero() {
 		title = "<span class=\"raid100\"> the Dragonslayer</span>"
 		prefix = "<span class=\"level0\">♛</span>"
+	} else if !character.Achievements["dkm100"].IsZero() {
+		prefix = "<span class=\"level100\">☹</span>"
+	} else if !character.Achievements["dkm50"].IsZero() {
+		prefix = "<span class=\"level75\">☹</span>"
+	} else if !character.Achievements["dkm10"].IsZero() {
+		prefix = "<span class=\"level50\">☹</span>"
+	} else if !character.Achievements["dkm5"].IsZero() {
+		prefix = "<span class=\"level25\">☹</span>"
+	} else if !character.Achievements["dkm1"].IsZero() {
+		prefix = "<span class=\"level0\">☹</span>"
 	}
 	if includeTitle {
 		return template.HTML(fmt.Sprintf("%v%v%v", prefix, name, title))
