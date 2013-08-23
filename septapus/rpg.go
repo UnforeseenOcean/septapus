@@ -574,8 +574,10 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 		<table class="characters">
 			<tr><th>Name</th><th>Level</th><th>XP</th><th>Items</th></tr>
 			{{range $index, $element := .GetSortedCharacters}}
+			{{if $element.Level}}
 			<tr id="button{{$index}}" class="moreinfobutton"><td class="name">{{$element.NameStyle false}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
 			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
+			{{end}}
 			{{end}}
 		</table>
 		{{end}}
@@ -604,21 +606,26 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			});
 		</script>
 		<p>
-                                <table><tr><td>
-                                                        <a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/html/logo/badge/html5-badge-h-css3-semantics.png" width="165" height="64" alt="HTML5 Powered with CSS3 / Styling, and Semantics" title="HTML5 Powered with CSS3 / Styling, and Semantics"></a>
-                                                        </td><td>
-                                                        <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-                                                        <input type="hidden" name="cmd" value="_donations">
-                                                        <input type="hidden" name="business" value="iopred+uspred@gmail.com">
-                                                        <input type="hidden" name="lc" value="US">
-                                                        <input type="hidden" name="item_name" value="Septapus">
-                                                        <input type="hidden" name="no_note" value="0">
-                                                        <input type="hidden" name="currency_code" value="USD">
-                                                        <input type="hidden" name="bn" value="PP-DonationsBF:btn_donateCC_LG.gif:NonHostedGuest">
-                                                        <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" name="submit" alt="PayPal - The safer, easier way to pay online!">
-                                                        <img alt="" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
-                                                        </form>
-                                                        </td></tr></table>
+    <table>
+    <tr>
+	    <td>
+	    	<a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/html/logo/badge/html5-badge-h-css3-semantics.png" width="165" height="64" alt="HTML5 Powered with CSS3 / Styling, and Semantics" title="HTML5 Powered with CSS3 / Styling, and Semantics"></a>
+	    </td>
+	    <td>
+		    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+		    <input type="hidden" name="cmd" value="_donations">
+		    <input type="hidden" name="business" value="iopred+uspred@gmail.com">
+		    <input type="hidden" name="lc" value="US">
+		    <input type="hidden" name="item_name" value="Septapus">
+		    <input type="hidden" name="no_note" value="0">
+		    <input type="hidden" name="currency_code" value="USD">
+		    <input type="hidden" name="bn" value="PP-DonationsBF:btn_donateCC_LG.gif:NonHostedGuest">
+		    <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" name="submit" alt="PayPal - The safer, easier way to pay online!">
+		    <img alt="" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+		    </form>
+	    </td>
+	    </tr>
+    </table>
 	</body>
 </html>
 `
