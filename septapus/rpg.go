@@ -1116,15 +1116,15 @@ func (character *Character) NameStyle(includeTitle bool) template.HTML {
 	} else if !character.Achievements["dkp1"].IsZero() {
 		title = "<span class=\"raid100\"> the Dragonslayer</span>"
 		prefix = "<span class=\"level0\">♛</span>"
-	} else if !character.Achievements["dkm100"].IsZero() {
+	} else if !character.Achievements["dmp100"].IsZero() {
 		prefix = "<span class=\"level100\">☹</span>"
-	} else if !character.Achievements["dkm50"].IsZero() {
+	} else if !character.Achievements["dmp50"].IsZero() {
 		prefix = "<span class=\"level75\">☹</span>"
-	} else if !character.Achievements["dkm10"].IsZero() {
+	} else if !character.Achievements["dmp10"].IsZero() {
 		prefix = "<span class=\"level50\">☹</span>"
-	} else if !character.Achievements["dkm5"].IsZero() {
+	} else if !character.Achievements["dmp5"].IsZero() {
 		prefix = "<span class=\"level25\">☹</span>"
-	} else if !character.Achievements["dkm1"].IsZero() {
+	} else if !character.Achievements["dmp1"].IsZero() {
 		prefix = "<span class=\"level0\">☹</span>"
 	}
 	if includeTitle {
