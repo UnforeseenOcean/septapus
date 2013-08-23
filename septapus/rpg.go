@@ -68,6 +68,7 @@ const (
 	STAT_DEFEATED
 	STAT_DEFEATED_LESS_THAN_10
 	STAT_SLAYED
+	STAT_HELPED
 	STAT_RAID_SIZE
 	STAT_ITEM_RARITY
 	STAT_SMALL_DEFEATED
@@ -75,6 +76,7 @@ const (
 	STAT_UNIQUE_DEFEATED
 	STAT_RARE_DEFEATED
 	STAT_DKP
+	STAT_DMP
 )
 
 type Goal struct {
@@ -294,6 +296,14 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("dkp10"), dkpRarityGroup, "Bearer of the dragonscale", "Slay 10 dragons", NewGoal(STAT_DKP, 10)))
 	achievements.add(NewAchievement(AchievementID("dkp50"), dkpRarityGroup, "Lord of the dragon", "Slay 50 dragons", NewGoal(STAT_DKP, 50)))
 	achievements.add(NewAchievement(AchievementID("dkp100"), dkpRarityGroup, "The dragon ascendant", "Slay 100 dragons", NewGoal(STAT_DKP, 100)))
+	dmpRarityGroup := AchievementGroup("dmp")
+	achievements.add(NewAchievement(AchievementID("dmp1"), dmpRarityGroup, "Unlucky", "Miss a dragon", NewGoal(STAT_DMP, 1)))
+	achievements.add(NewAchievement(AchievementID("dmp5"), dmpRarityGroup, "Hapless luck", "Miss 5 dragons", NewGoal(STAT_DMP, 5)))
+	achievements.add(NewAchievement(AchievementID("dmp10"), dmpRarityGroup, "Dire luck", "Miss 10 dragons", NewGoal(STAT_DMP, 10)))
+	achievements.add(NewAchievement(AchievementID("dmp50"), dmpRarityGroup, "Tragic luck", "Miss 50 dragons", NewGoal(STAT_DMP, 50)))
+	achievements.add(NewAchievement(AchievementID("dmp50"), dmpRarityGroup, "Catastrophic luck", "Miss 100 dragons", NewGoal(STAT_DMP, 100)))
+	featsGroup := AchievementGroup("feats")
+	achievements.add(NewAchievement(AchievementID("helped100"), featsGroup, "Team player", "Help with 100 fights, without getting the killing blow", NewGoal(STAT_HELPED, 100)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
@@ -1145,11 +1155,17 @@ func (monster *Monster) assignStats(character *Character) {
 	if _, ok := monster.Characters[key]; !ok {
 		return
 	}
+	dragon := strings.Index(monster.Name, "Dragon") != -1
 	stats := character.stats
 	if key == monster.Slayed {
 		stats[STAT_SLAYED]++
-		if strings.Index(monster.Name, "Dragon") != -1 {
+		if dragon {
 			stats[STAT_DKP]++
+		}
+	} else {
+		stats[STAT_HELPED]++
+		if dragon {
+			stats[STAT_DMP]++
 		}
 	}
 	stats[STAT_DEFEATED]++
