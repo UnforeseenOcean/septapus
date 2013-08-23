@@ -254,7 +254,8 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("level1"), levelGroup, "Fresh meat", "Reach level 1", NewGoal(STAT_LEVEL, 1)))
 	achievements.add(NewAchievement(AchievementID("level5"), levelGroup, "Rookie", "Reach level 5", NewGoal(STAT_LEVEL, 5)))
 	achievements.add(NewAchievement(AchievementID("level10"), levelGroup, "Veteran", "Reach level 10", NewGoal(STAT_LEVEL, 10)))
-	achievements.add(NewAchievement(AchievementID("level50"), levelGroup, "Hero", "Reach level 50", NewGoal(STAT_LEVEL, 50)))
+	achievements.add(NewAchievement(AchievementID("level25"), levelGroup, "Hero", "Reach level 25", NewGoal(STAT_LEVEL, 25)))
+	achievements.add(NewAchievement(AchievementID("level50"), levelGroup, "Superhuman", "Reach level 50", NewGoal(STAT_LEVEL, 50)))
 	achievements.add(NewAchievement(AchievementID("level100"), levelGroup, "God", "Reach level 100", NewGoal(STAT_LEVEL, 100)))
 	defeatedGroup := AchievementGroup("defeated")
 	achievements.add(NewAchievement(AchievementID("defeated1"), defeatedGroup, "Known in battle", "Defeat 1 monster", NewGoal(STAT_DEFEATED, 1)))
@@ -305,7 +306,7 @@ func init() {
 	achievements.add(NewAchievement(AchievementID("dmp100"), dmpRarityGroup, "Catastrophic luck", "Miss 100 dragons", NewGoal(STAT_DMP, 100)))
 	helpedGroup := AchievementGroup("helped")
 	achievements.add(NewAchievement(AchievementID("helped100"), helpedGroup, "Team player", "Help with 100 fights, without getting the killing blow", NewGoal(STAT_HELPED, 100)))
-	achievements.add(NewAchievement(AchievementID("helped1000"), helpedGroup, "Team pro", "Help with 1000 fights, without getting the killing blow", NewGoal(STAT_HELPED, 1000)))
+	achievements.add(NewAchievement(AchievementID("helped1000"), helpedGroup, "Selfless", "Help with 1000 fights, without getting the killing blow", NewGoal(STAT_HELPED, 1000)))
 }
 
 func NewRPGPlugin(settings *PluginSettings) *RPGPlugin {
