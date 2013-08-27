@@ -353,9 +353,11 @@ func (comic *ComicPlugin) uploadComic(image image.Image) {
 
 	w.Close()
 
-	if _, err := http.Post(*comicurl, w.FormDataContentType(), b); err != nil {
+	if resp, err := http.Post(*comicurl, w.FormDataContentType(), b); err != nil {
 		logging.Error("Error posting comic to server:", err)
 		return
+	} else {
+		defer resp.Body.Close()
 	}
 }
 

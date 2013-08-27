@@ -729,9 +729,11 @@ func (game *Game) Upload() {
 
 	logging.Info("Uploading rpg", filename, *rpgurl, *rpgkey)
 
-	if _, err := http.Post(*rpgurl, w.FormDataContentType(), b); err != nil {
+	if resp, err := http.Post(*rpgurl, w.FormDataContentType(), b); err != nil {
 		logging.Error("Error posting comic to server:", err)
 		return
+	} else {
+		defer resp.Body.Close()
 	}
 }
 
