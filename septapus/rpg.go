@@ -576,8 +576,7 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			{{range $index, $element := .GetSortedCharacters}}
 			{{if $element.Level}}
 			<tr id="button{{$index}}" class="moreinfobutton"><td class="name">{{$element.NameStyle false}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
-			` + //<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
-	`<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
+			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
 			{{end}}
 			{{end}}
 		</table>
@@ -630,6 +629,8 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 	</body>
 </html>
 `
+
+//<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
 
 func colorString(color color.Color) string {
 	r, g, b, _ := color.RGBA()
