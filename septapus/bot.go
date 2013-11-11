@@ -71,8 +71,8 @@ func (e *EventDispatcher) RemoveEventHandler(channel chan *Event) {
 }
 
 func (e *EventDispatcher) Broadcast(event *Event) {
-	e.RLock()
-	defer e.RUnlock()
+	e.Lock()
+	defer e.Unlock()
 
 	for channel, _ := range e.channels {
 		channel <- event

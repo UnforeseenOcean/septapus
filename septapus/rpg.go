@@ -576,7 +576,8 @@ const gameTemplateSource = `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "h
 			{{range $index, $element := .GetSortedCharacters}}
 			{{if $element.Level}}
 			<tr id="button{{$index}}" class="moreinfobutton"><td class="name">{{$element.NameStyle false}}</td><td class="level level{{$element.LevelPercentage $}}">{{$element.Level}}</td><td class="xp bar{{$element.XPPercentage}}">{{$element.XP}}/{{$element.MaxXP}}</td><td class="items">{{$element.ItemsList}}</td></tr>
-			<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
+			` + //<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Achievements</h3>{{$element.AchievementsList}}{{if $element.OldItems}}<p><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
+	`<tr id="div{{$index}}" class="moreinfo"><td colspan="4"><h2>{{$element.NameStyle true}}</h2><h3>Item History</h3>{{$element.OldItemsList}}{{end}}<p></td></tr>
 			{{end}}
 			{{end}}
 		</table>
@@ -1038,8 +1039,8 @@ func (monster *Monster) Heal(health int64) {
 
 func (game *Game) DefeatedReverse() Monsters {
 	num := len(game.Defeated)
-	if num > 100 {
-		num = 100
+	if num > 50 {
+		num = 50
 	}
 	defeated := make(Monsters, num)
 	for i := 0; i < num; i++ {
